@@ -5,9 +5,7 @@ from rclpy.task import Future
 from geometry_msgs.msg import Twist, TwistStamped
 import time
 
-# ==============================================================================
-# 1. CORE ROS MESSAGE IMPORTS
-# ==============================================================================
+
 try:
     # Services: SetBool for pause/resume, Trigger for autonomy stop
     from std_srvs.srv import SetBool, Trigger 
@@ -19,21 +17,18 @@ except ImportError as e:
     raise
 
 
-# ==============================================================================
-# 2. MISSION PLANNER NODE
-# ==============================================================================
 
 class MissionPlanner(Node):
     """
-    Executes a sequential mission designed for a planned interruption:
-    1. Start GoToPOI (non-blocking, captures future).
+    Executes a sequential mission designed for a planned interruption to showcase API usage.
+    The mission flow is as follows:
+    1. Start GoToPOI (non-blocking).
     2. Wait 5 seconds to interrupt navigation mid-route.
-    3. Pause the control stack.
-    4. Execute blocking local maneuvers (Turn and Drive via cmd_vel).
-    5. Resume control.
-    6. BLOCK and wait for GoToPOI to finally complete (the "spin until complete" part).
-    
-    The final Autonomy Stop command is issued during program shutdown.
+    3. Pause autonomy.
+    4. Execute teleop maneuvers (turn + drive) while paused.
+    5. Resume autonomy
+    6. BLOCK and wait for GoToPOI to finally complete.
+    7. A final Autonomy Stop command is issued during program shutdown.
     """
     # -- Topic Constants --
     ROBOT_NAMESPACE = '/a300_00003'
@@ -63,7 +58,6 @@ class MissionPlanner(Node):
         super().__init__('mission_planner')
         self.get_logger().info(f'Mission Planner started for robot: {self.ROBOT_NAMESPACE}')
         
-        # Setup Clients
         self.poi_client = ActionClient(self, GoToPoi, self.ACTION_GO_TO_POI)
         self.cmd_vel_publisher = self.create_publisher(TwistStamped, self.CMD_VEL_TOPIC, 10)
         self.pause_client = self.create_client(SetBool, self.SERVICE_PAUSE)
@@ -74,7 +68,7 @@ class MissionPlanner(Node):
         
     def _wait_for_clients(self):
         """Blocks until all necessary ROS servers are available."""
-        self.get_logger().info('Pinging mission components...')
+        self.get_logger().info('Waiting for services and action servers...')
         
         while not all([
             self.poi_client.wait_for_server(timeout_sec=1.0),
@@ -85,9 +79,7 @@ class MissionPlanner(Node):
             self.get_logger().info('Still waiting...')
             time.sleep(1.0)
             
-        self.get_logger().info('All components online. Ready.')
-
-    # --- TWIST PUBLISHING UTILITY ---------------------------------------------
+        
 
     def publish_twist(self, linear_x, angular_z):
         """Publishes a TwistStamped message for direct motion control."""
@@ -102,25 +94,22 @@ class MissionPlanner(Node):
         
         self.cmd_vel_publisher.publish(twist_stamped)
 
-    # --- TELEOP MOTION WRAPPERS (Blocking until time expires) -----------------
 
     def execute_teleop_motion(self, linear_vel, angular_vel, duration, action_name):
-        """Performs approximate motion via fixed-duration publishing and blocks."""
-        self.get_logger().info(f'--- MOTION START (BLOCKING): {action_name} for {duration:.2f}s ---')
+        """Publishes teleop commands for a specified duration"""
+        self.get_logger().info(f'{action_name} started')
         
         start_time_s = time.time()
         self.publish_twist(linear_vel, angular_vel)
         
-        # Loop to ensure publishing continues
         end_wait_time = time.time() + duration
         while time.time() < end_wait_time:
             self.publish_twist(linear_vel, angular_vel)
             time.sleep(self.PUBLISH_RATE)
         
         self.publish_twist(0.0, 0.0) # Stop motion
-        end_time_s = time.time()
         
-        self.get_logger().info(f'SUCCESS: {action_name} finished (Actual duration: {end_time_s - start_time_s:.2f}s).')
+        self.get_logger().info(f'SUCCESS: {action_name} finished.')
         return True
         
     def execute_turn(self):
@@ -131,11 +120,8 @@ class MissionPlanner(Node):
         """Executes the approximate 1-meter drive."""
         return self.execute_teleop_motion(self.DRIVE_VEL_M_S, 0.0, self.DRIVE_DURATION, f'1 METER DRIVE')
 
-    # --- ACTION WRAPPER (Non-Blocking) ----------------------------------------
-
     def send_go_to_poi_goal(self, poi_uuid: str, map_uuid: str):
         """Sends GoToPOI goal and returns the future for later blocking."""
-        self.get_logger().info(f'--- NAV START (NON-BLOCKING): Go to POI "{poi_uuid}" ---')
         goal_msg = GoToPoi.Goal(poi_uuid=poi_uuid, map_uuid=map_uuid)
         send_goal_future = self.poi_client.send_goal_async(goal_msg)
         self.get_logger().info('GoToPOI goal sent. Robot is now driving.')
@@ -168,11 +154,9 @@ class MissionPlanner(Node):
             return False
 
 
-    # --- SERVICE WRAPPERS -----------------------------------------------------
-
     def _call_set_bool_service(self, client, data: bool, action_name: str):
         """Helper for calling SetBool services (Pause/Resume)."""
-        self.get_logger().info(f'Attempting to call {action_name} service...')
+        #self.get_logger().info(f'Attempting to call {action_name} service...')
         request = SetBool.Request(data=data)
         future = client.call_async(request)
         rclpy.spin_until_future_complete(self, future)
@@ -200,39 +184,36 @@ class MissionPlanner(Node):
             self.get_logger().error(f'FAILURE: {action_name} service call failed (no response).')
             return False
 
-    # --- MISSION EXECUTION ----------------------------------------------------
 
     def execute_mission(self):
         """The main, sequential mission logic."""
-        self.get_logger().info("\n--- MISSION START ---")
+        self.get_logger().info("Starting mission...")
         
-        # STEP 1: Initiate GoToPOI (Fire and Forget, capture future)
+        # STEP 1: Execute GoToPOI
         poi_future = self.send_go_to_poi_goal(self.POI_ID, self.MAP_ID)
         
         # STEP 2: Wait 5 seconds to interrupt navigation mid-route
-        self.get_logger().info('PRE-PAUSE DELAY: Sleeping for 5 seconds while robot drives...')
-        time.sleep(5)
-        self.get_logger().info('Waking up. Initiating pause.')
+        time.sleep(10)
+        self.get_logger().info('Pausing robot to interrupt GoToPOI...')
         
-        # STEP 3: PAUSE control selection
+        # STEP 3: PAUSE Autonomy
         if not self._call_set_bool_service(self.pause_client, True, 'PAUSE'):
             self.get_logger().error("PAUSE failed. Aborting mission.")
             return
 
-        # STEP 4: Perform local maneuvers (Blocking, executed while paused)
-        # Note: The 'spin' (execute_turn) is performed here.
+        # STEP 4: Teleop during pause (turn + drive)
         self.execute_turn()
         self.execute_straight_drive()
             
-        # STEP 5: RESUME control selection (Robot should continue GoToPOI)
+        # STEP 5: RESUME autonomy
         if not self._call_set_bool_service(self.resume_client, True, 'RESUME'):
             self.get_logger().error("RESUME failed. Robot might remain paused.")
             return
         
-        # STEP 6: BLOCK and wait for GoToPOI to finish (The final 'spin until complete')
+        # STEP 6: BLOCK and wait for GoToPOI to finish
         self.wait_for_go_to_poi_completion(poi_future)
         
-        self.get_logger().info("\n--- MISSION COMPLETE (POI reached and sequence finished) ---")
+        self.get_logger().info("Mission execution complete.")
 
 
 def main(args=None):
@@ -245,8 +226,7 @@ def main(args=None):
     except Exception as e:
         planner.get_logger().error(f"Mission execution failed with an unhandled exception: {e}")
     finally:
-        # Final, system-level stop on shutdown (explicitly requested)
-        planner.get_logger().info("Mission sequence finished. Triggering Autonomy Stop on shutdown.")
+        
         planner._call_trigger_service(planner.autonomy_stop_client, 'AUTONOMY STOP (Shutdown)') 
         
         planner.destroy_node()
