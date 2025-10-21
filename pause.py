@@ -4,18 +4,8 @@ from rclpy.action import ActionClient
 from rclpy.task import Future
 from geometry_msgs.msg import Twist, TwistStamped
 import time
-
-
-try:
-    # Services: SetBool for pause/resume, Trigger for autonomy stop
-    from std_srvs.srv import SetBool, Trigger 
-    # Actions: GoToPOI
-    from clearpath_navigation_msgs.action import ExecuteNetworkGoToPOI as GoToPoi 
-except ImportError as e:
-    # This check helps quickly diagnose issues if the environment isn't sourced.
-    print(f"FATAL: Missing ROS 2 messages. Did you forget to source? Error: {e}")
-    raise
-
+from std_srvs.srv import SetBool, Trigger 
+from clearpath_navigation_msgs.action import ExecuteNetworkGoToPOI as GoToPoi 
 
 
 class MissionPlanner(Node):
@@ -28,8 +18,7 @@ class MissionPlanner(Node):
     4. Execute teleop maneuvers (turn + drive) while paused.
     5. Resume autonomy
     6. BLOCK and wait for GoToPOI to finally complete.
-    7. A final Autonomy Stop command is issued during program shutdown.
-    """
+"""
     # -- Topic Constants --
     ROBOT_NAMESPACE = '/a300_00003'
     ACTION_GO_TO_POI    = f'{ROBOT_NAMESPACE}/autonomy/network_goto_poi'
@@ -156,7 +145,6 @@ class MissionPlanner(Node):
 
     def _call_set_bool_service(self, client, data: bool, action_name: str):
         """Helper for calling SetBool services (Pause/Resume)."""
-        #self.get_logger().info(f'Attempting to call {action_name} service...')
         request = SetBool.Request(data=data)
         future = client.call_async(request)
         rclpy.spin_until_future_complete(self, future)
