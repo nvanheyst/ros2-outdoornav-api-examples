@@ -1,27 +1,10 @@
 """
-Loop a mission until the battery drops below a threshold (or max-loops hit).
+Loop a mission until battery drops below threshold or max loops hit.
 
-Usage:
-    python loop_mission_battery_aware.py                  # default 30%, 10 loops
-    python loop_mission_battery_aware.py 40 5             # 40%, 5 loops
+  python loop_mission_battery_aware.py 30 5    # 30%, 5 loops
 
-Flow:
-    1. Subscribe to /platform/bms/state (sensor_msgs/BatteryState).
-    2. Each loop:
-       a. Check latest battery reading.
-       b. If percentage < threshold, stop and return.
-       c. Fire ExecuteMission, block on the result.
-       d. Increment loop counter, repeat.
-    3. Ctrl-C cancels the in-flight mission cleanly.
-
-Notes:
-    - Works in sim — the gz battery model drains as the robot drives, so
-      long-running loops will actually trip the threshold. For a quick test,
-      set threshold close to the current reading.
-    - send_goal_async + a spin loop is used so the BMS subscription stays
-      alive while the mission action is running.
-    - Update MISSION_ID/MAP_ID to whichever map+mission you want to loop;
-      the sim ships multiple maps so the IDs are not fixed.
+Spins the executor manually while the mission action is in flight so the
+BMS subscription keeps draining. Set MISSION_ID/MAP_ID below.
 """
 
 import sys
@@ -35,11 +18,11 @@ from clearpath_navigation_msgs.action import ExecuteMission
 
 
 ROBOT_NAMESPACE = '/a300_00003'
-ACTION_EXECUTE_MISSION = f'{ROBOT_NAMESPACE}/mission_manager/execute_mission'
+ACTION_EXECUTE_MISSION = f'{ROBOT_NAMESPACE}/autonomy/mission'
 TOPIC_BATTERY = f'{ROBOT_NAMESPACE}/platform/bms/state'
 
-MISSION_ID = 'REPLACE_WITH_MISSION_UUID'
-MAP_ID = 'REPLACE_WITH_MAP_UUID'
+MISSION_ID = "REPLACE_WITH_MISSION_UUID"
+MAP_ID = "REPLACE_WITH_MAP_UUID"
 
 
 class BatteryAwareLoop(Node):

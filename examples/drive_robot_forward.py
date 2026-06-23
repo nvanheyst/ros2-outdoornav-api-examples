@@ -1,25 +1,11 @@
 """
-Drive the robot forward N metres at M m/s by publishing TwistStamped on
-the UI teleop topic. Bypasses the autonomy stack — this is bare cmd_vel.
+Open-loop forward drive via TwistStamped on ui_teleop/cmd_vel.
 
-Usage:
-    python drive_robot_forward.py              # default 2.0 m at 0.3 m/s
-    python drive_robot_forward.py 5.0 0.4      # 5 m at 0.4 m/s
+  python drive_robot_forward.py              # 2.0 m at 0.3 m/s
+  python drive_robot_forward.py 5.0 0.4
 
-Flow:
-    1. Wait for the autonomy stack to actually be IDLE (we don't want to
-       fight a running mission).
-    2. Publish TwistStamped(linear.x = vel) at PUBLISH_RATE Hz for the
-       computed duration (distance / vel).
-    3. Publish a final zero-twist to make the robot stop hard.
-
-Notes:
-    - This is open-loop — there is no odometry feedback. The actual distance
-      driven depends on terrain, slip, and the controller's ramp profile.
-      Treat the input as "drive for this long," not "drive exactly N metres."
-    - The teleop topic is configured to take priority over autonomy in
-      OutdoorNav's control_selection, but publishing while a mission is
-      running will cause mode conflicts — wait until IDLE.
+Bypasses autonomy. Distance is "drive for this long," not "drive exactly
+N metres" — no odometry feedback. Don't run while a mission is active.
 """
 
 import sys

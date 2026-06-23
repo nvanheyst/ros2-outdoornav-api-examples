@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Edit NetworkInterface name to match your machine.
+  Wired ethernet to the robot is recommended over wifi; RELIABLE QoS
+  retransmits for service request/response don't tolerate wifi packet loss.
+-->
+<CycloneDDS>
+  <Domain id="any">
+    <General>
+      <AllowMulticast>true</AllowMulticast>
+      <Interfaces>
+        <NetworkInterface name="eth0"/>
+      </Interfaces>
+    </General>
+    <Discovery>
+      <ParticipantIndex>auto</ParticipantIndex>
+      <MaxAutoParticipantIndex>120</MaxAutoParticipantIndex>
+    </Discovery>
+  </Domain>
+</CycloneDDS>

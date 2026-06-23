@@ -1,0 +1,27 @@
+services:
+  dev:
+    # Default: pull the prebuilt image from GHCR. There is only ever :latest;
+    # CI overwrites it on every push.
+    image: ghcr.io/nvanheyst/onav-api-examples:latest
+    # If you want to build locally (e.g. testing a Dockerfile change),
+    # `docker compose build` uses this section instead.
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: onav-api-examples-dev
+    network_mode: host
+    # RMW + DDS config are intentionally not hardcoded. Defaults to FastDDS
+    # (matches OutdoorNav and the ROS 2 Jazzy default). Override via .env if
+    # you run Cyclone or Zenoh — see .env.example.
+    environment:
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-25}
+      - RMW_IMPLEMENTATION=${RMW_IMPLEMENTATION:-rmw_fastrtps_cpp}
+      - CYCLONEDDS_URI=${CYCLONEDDS_URI:-}
+      - FASTRTPS_DEFAULT_PROFILES_FILE=${FASTRTPS_DEFAULT_PROFILES_FILE:-}
+      - ZENOH_CONFIG_OVERRIDE=${ZENOH_CONFIG_OVERRIDE:-}
+    volumes:
+      - ../examples:/examples:rw
+      - ./cyclonedds.xml:/cyclonedds.xml:ro
+    stdin_open: true
+    tty: true
+    command: ["/bin/bash"]

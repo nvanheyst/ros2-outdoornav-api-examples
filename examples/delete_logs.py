@@ -1,23 +1,14 @@
 """
-Enumerate event logs from the OutdoorNav logger and delete every one.
+Delete every event log via logger/delete_log.
 
-Usage:
-    python delete_logs.py                      # delete all logs
-    python delete_logs.py --keep-recent 24     # delete only logs older than 24h
-    python delete_logs.py --dry-run            # list what would be deleted
+Ported from the onav SDK ROS 1 examples and updated for ROS 2.
 
-Flow:
-    1. Call logger/get_all_logs to retrieve every EventLog.
-    2. Filter by age if --keep-recent is set.
-    3. For each remaining log, call logger/delete_log with purge_record=true.
-    4. Print a summary count.
+  python delete_logs.py
+  python delete_logs.py --keep-recent 24    # leave logs from the last 24h
+  python delete_logs.py --dry-run
 
-Notes:
-    - `purge_record=true` removes the on-disk artifacts (bag chunks etc),
-      not just the metadata row. Without it the entry disappears from the
-      UI but the storage is not reclaimed.
-    - Useful as a maintenance cron on a busy fleet; pair with chrony so the
-      age filter actually means what the operator thinks it means.
+purge_record=true also removes the bag chunks; without it only the entry
+disappears from the UI and disk isn't reclaimed.
 """
 
 import sys
@@ -54,6 +45,7 @@ class DeleteLogs(Node):
     def delete(self, log_uuid: str) -> bool:
         req = DeleteLog.Request()
         req.uuid = log_uuid
+        req.delete_media = True
         req.purge_record = True
         future = self.delete_client.call_async(req)
         rclpy.spin_until_future_complete(self, future)
@@ -77,8 +69,8 @@ def main(args=None):
         cutoff = (time.time() - keep_recent_h * 3600) if keep_recent_h else None
         to_delete = []
         for log in logs:
-            # EventLog has a `stamp` (builtin_interfaces/Time) — sec field is unix seconds.
-            ts = getattr(getattr(log, 'stamp', None), 'sec', None)
+            # EventLog has `start_time` (clearpath_logger_msgs/EventTime) — sec is unix seconds.
+            ts = getattr(getattr(log, 'start_time', None), 'sec', None)
             if cutoff is not None and ts is not None and ts >= cutoff:
                 continue
             to_delete.append(log)

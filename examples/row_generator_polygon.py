@@ -1,36 +1,22 @@
 """
-Build a row-coverage map from a polygon defined by tagged POIs.
+Row-coverage map from a polygon defined by tagged POIs.
 
-ROS 2 port of the original onav_sdk/rospy version. The polygon is defined by
-POIs sharing a tag (e.g. 'cov-2'). Vertices are ordered by POI name suffix
-(cov-2-1, cov-2-2, ...). The first POI carries a JSON blob in
-`custom_fields_json` with row spacing + width:
+Ported from the onav SDK ROS 1 examples and updated for ROS 2.
+
+POIs sharing a tag (default 'cov-2') define the polygon vertices, ordered
+by name suffix (cov-2-1, cov-2-2, ...). The first POI's custom_fields_json
+carries the row spacing + width:
 
     {"spacing": 6.0, "width": 1.5}
 
-The script:
-    1. Fetches all POIs, filters by tag, sorts by name.
-    2. Pulls spacing + width from the first POI's custom_fields_json.
-    3. Builds the polygon in UTM (zone derived from the centroid longitude).
-    4. Generates parallel rows perpendicular to the first edge, clipped to
-       the polygon.
-    5. Integrates the polygon's own edges so the boundary is part of the
-       drivable graph.
-    6. Deletes any existing map with the same name.
-    7. Pushes the new map as NetworkPoint + NetworkEdgeReq.
-    8. (No execution — pair with generate_traversal_mission.py to drive it.)
+  python row_generator_polygon.py            # tag 'cov-2'
+  python row_generator_polygon.py cov-3
 
-Usage:
-    python row_generator_polygon.py             # tag default 'cov-2'
-    python row_generator_polygon.py cov-3
-
-Dependencies:
-    pip install shapely networkx pyproj
+Needs: pip install shapely networkx pyproj
 """
 
 import json
 import sys
-import uuid
 
 import networkx as nx
 from pyproj import CRS, Transformer
@@ -41,17 +27,17 @@ from shapely.ops import unary_union, snap
 import rclpy
 from rclpy.node import Node
 from clearpath_mission_manager_msgs.srv import (
-    CreateMap, GetAllMaps, DeleteMap, GetAllPois,
+    CreateMap, GetAllMaps, DeleteById, GetAllPointsOfInterest,
 )
-from clearpath_mission_manager_msgs.msg import NetworkEdgeReq
-from clearpath_navigation_msgs.msg import NetworkPoint
+from clearpath_mission_manager_msgs.msg import MapEdgeReq
+from clearpath_navigation_msgs.msg import MapPoint
 
 
 ROBOT_NAMESPACE = '/a300_00003'
 SERVICE_CREATE_MAP   = f'{ROBOT_NAMESPACE}/mission_manager/create_map'
 SERVICE_GET_ALL_MAPS = f'{ROBOT_NAMESPACE}/mission_manager/get_all_maps'
 SERVICE_DELETE_MAP   = f'{ROBOT_NAMESPACE}/mission_manager/delete_map'
-SERVICE_GET_ALL_POIS = f'{ROBOT_NAMESPACE}/mission_manager/get_all_pois'
+SERVICE_GET_ALL_POIS = f'{ROBOT_NAMESPACE}/mission_manager/get_all_points_of_interest'
 
 DEFAULT_POI_TAG = 'cov-2'
 SPEED_LIMIT_M_S = 1.0
@@ -126,10 +112,10 @@ class RowGenPolygon(Node):
     def __init__(self, tag: str):
         super().__init__('row_generator_polygon')
         self.tag = tag
-        self.create_map_client   = self.create_client(CreateMap,   SERVICE_CREATE_MAP)
-        self.get_all_maps_client = self.create_client(GetAllMaps,  SERVICE_GET_ALL_MAPS)
-        self.delete_map_client   = self.create_client(DeleteMap,   SERVICE_DELETE_MAP)
-        self.get_all_pois_client = self.create_client(GetAllPois,  SERVICE_GET_ALL_POIS)
+        self.create_map_client   = self.create_client(CreateMap, SERVICE_CREATE_MAP)
+        self.get_all_maps_client = self.create_client(GetAllMaps, SERVICE_GET_ALL_MAPS)
+        self.delete_map_client   = self.create_client(DeleteById, SERVICE_DELETE_MAP)
+        self.get_all_pois_client = self.create_client(GetAllPointsOfInterest, SERVICE_GET_ALL_POIS)
 
     def wait(self):
         for c, n in [(self.create_map_client,   SERVICE_CREATE_MAP),
@@ -145,7 +131,7 @@ class RowGenPolygon(Node):
         return future.result()
 
     def fetch_polygon_pois(self) -> list:
-        resp = self.call(self.get_all_pois_client, GetAllPois.Request())
+        resp = self.call(self.get_all_pois_client, GetAllPointsOfInterest.Request())
         pois = [p for p in getattr(resp, 'points_of_interest', []) if self.tag in getattr(p, 'tags', [])]
         pois.sort(key=lambda p: p.name)
         return pois
@@ -154,43 +140,46 @@ class RowGenPolygon(Node):
         resp = self.call(self.get_all_maps_client, GetAllMaps.Request())
         for m in getattr(resp, 'maps', []):
             if m.name == name:
-                req = DeleteMap.Request()
+                req = DeleteById.Request()
                 req.uuid = m.uuid
                 self.call(self.delete_map_client, req)
                 self.get_logger().info(f'Deleted existing map {name!r}.')
                 return
 
     def push_map(self, name: str, graph: nx.Graph, utm_to_ll: Transformer, edge_radius: float) -> str:
+        # Local IDs for points in this request; server generates real UUIDs.
         points = []
-        node_uuid = {}
+        node_local_id: dict = {}
         for node, attrs in graph.nodes(data=True):
             x, y = attrs['pos']
             lon, lat = utm_to_ll.transform(x, y)
-            p = NetworkPoint()
-            p.uuid = str(uuid.uuid4())
+            p = MapPoint()
+            p.uuid = str(node)
             p.latitude = lat
             p.longitude = lon
             points.append(p)
-            node_uuid[node] = p.uuid
+            node_local_id[node] = p.uuid
 
         edges = []
         for u, v in graph.edges():
             for s, e in ((u, v), (v, u)):   # bidirectional
-                edge = NetworkEdgeReq()
-                edge.start_point_id = node_uuid[s]
-                edge.end_point_id = node_uuid[e]
+                edge = MapEdgeReq()
+                edge.start_point_id = node_local_id[s]
+                edge.end_point_id = node_local_id[e]
                 edge.speed_limit = SPEED_LIMIT_M_S
                 edge.radius = edge_radius
                 edges.append(edge)
 
         req = CreateMap.Request()
         req.name = name
+        req.default_radius = edge_radius
+        req.default_speed_limit = SPEED_LIMIT_M_S
         req.points = points
         req.connections = edges
         resp = self.call(self.create_map_client, req)
-        map_uuid = getattr(getattr(resp, 'result', None), 'uuid', None) or getattr(resp, 'uuid', None)
+        map_uuid = resp.result.uuid if resp and resp.result else None
         self.get_logger().info(
-            f'Created map {name!r} ({map_uuid[:8] if map_uuid else "?"}) '
+            f'Created map {name!r} ({map_uuid}) '
             f'with {len(points)} points and {len(edges)} edges.'
         )
         return map_uuid

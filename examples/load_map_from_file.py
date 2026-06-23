@@ -1,39 +1,33 @@
 """
-Load an OutdoorNav map from a JSON file via mission_manager/create_map.
+Load an OutdoorNav map from JSON via mission_manager/create_map.
 
-Usage:
-    python load_map_from_file.py data/map_Greenspace.json
-    python load_map_from_file.py data/map_Greenspace.json "Greenspace v2"
+Ported from the onav SDK ROS 1 examples and updated for ROS 2.
 
-JSON schema (matches the shape OutdoorNav's UI exports):
+  python load_map_from_file.py data/map_Greenspace.json
+  python load_map_from_file.py data/map_Greenspace.json "Greenspace v2"
+
+JSON shape (matches the UI export):
     {
       "name": "Greenspace",
-      "points": [
-        {"uuid": "...", "name": "p1", "latitude": 50.109, "longitude": -97.318},
-        ...
-      ],
-      "connections": [
-        {"start_point_id": "...", "end_point_id": "...",
-         "speed_limit": 1.0, "radius": 1.5},
-        ...
-      ]
+      "default_radius": 1.5,
+      "default_speed_limit": 1.0,
+      "points":      [{"id": "p1", "latitude": 50.109, "longitude": -97.318}, ...],
+      "connections": [{"start_point_id": "p1", "end_point_id": "p2",
+                       "speed_limit": 1.0, "radius": 1.5}, ...]
     }
 
-If `uuid` fields are missing on points, new ones are generated and stitched
-into the connections by name. If `name` is not provided on the CLI, the file's
-top-level "name" is used.
+The `id`s in the request are local; the server generates real UUIDs.
 """
 
 import json
 import sys
-import uuid
 from pathlib import Path
 
 import rclpy
 from rclpy.node import Node
 from clearpath_mission_manager_msgs.srv import CreateMap
-from clearpath_mission_manager_msgs.msg import NetworkEdgeReq
-from clearpath_navigation_msgs.msg import NetworkPoint
+from clearpath_mission_manager_msgs.msg import MapEdgeReq
+from clearpath_navigation_msgs.msg import MapPoint
 
 
 ROBOT_NAMESPACE = '/a300_00003'
@@ -46,36 +40,36 @@ def build_map_request(data: dict, override_name: str | None) -> CreateMap.Reques
         raise ValueError('No map name in JSON or on CLI.')
 
     points = []
-    name_to_uuid: dict[str, str] = {}
-    for raw in data.get('points', []):
-        p = NetworkPoint()
-        p.uuid = raw.get('uuid') or str(uuid.uuid4())
+    local_ids: set[str] = set()
+    for i, raw in enumerate(data.get('points', [])):
+        p = MapPoint()
+        p.uuid = str(raw.get('id') or raw.get('uuid') or i)
         p.latitude = float(raw['latitude'])
         p.longitude = float(raw['longitude'])
-        if hasattr(p, 'name') and raw.get('name'):
-            p.name = raw['name']
         points.append(p)
-        if raw.get('name'):
-            name_to_uuid[raw['name']] = p.uuid
-        if raw.get('uuid'):
-            name_to_uuid[raw['uuid']] = p.uuid  # uuid → uuid identity
+        local_ids.add(p.uuid)
 
     if not points:
         raise ValueError('No points in JSON.')
 
     connections = []
     for raw in data.get('connections', []):
-        e = NetworkEdgeReq()
-        start_id = raw.get('start_point_id') or raw.get('start')
-        end_id = raw.get('end_point_id') or raw.get('end')
-        e.start_point_id = name_to_uuid.get(start_id, start_id)
-        e.end_point_id = name_to_uuid.get(end_id, end_id)
+        start_id = str(raw.get('start_point_id') or raw.get('start'))
+        end_id = str(raw.get('end_point_id') or raw.get('end'))
+        if start_id not in local_ids or end_id not in local_ids:
+            print(f'  WARN: edge {start_id}->{end_id} references unknown point id, skipping.')
+            continue
+        e = MapEdgeReq()
+        e.start_point_id = start_id
+        e.end_point_id = end_id
         e.speed_limit = float(raw.get('speed_limit', 1.0))
         e.radius = float(raw.get('radius', 1.5))
         connections.append(e)
 
     req = CreateMap.Request()
     req.name = name
+    req.default_radius = float(data.get('default_radius', 1.5))
+    req.default_speed_limit = float(data.get('default_speed_limit', 1.0))
     req.points = points
     req.connections = connections
     return req
@@ -97,7 +91,7 @@ class LoadMap(Node):
         future = self.client.call_async(req)
         rclpy.spin_until_future_complete(self, future)
         resp = future.result()
-        map_uuid = getattr(getattr(resp, 'result', None), 'uuid', None) or getattr(resp, 'uuid', None)
+        map_uuid = resp.result.uuid if resp and resp.result else None
         if not map_uuid:
             raise RuntimeError(f'CreateMap returned no uuid: {resp}')
         self.get_logger().info(f'OK: map_uuid={map_uuid}')

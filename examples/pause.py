@@ -5,7 +5,7 @@ from rclpy.task import Future
 from geometry_msgs.msg import Twist, TwistStamped
 import time
 from std_srvs.srv import SetBool, Trigger 
-from clearpath_navigation_msgs.action import ExecuteNetworkGoToPOI as GoToPoi 
+from clearpath_navigation_msgs.action import ExecuteGoToPOI as GoToPoi
 
 
 class MissionPlanner(Node):
@@ -21,7 +21,7 @@ class MissionPlanner(Node):
 """
     # -- Topic Constants --
     ROBOT_NAMESPACE = '/a300_00003'
-    ACTION_GO_TO_POI    = f'{ROBOT_NAMESPACE}/autonomy/network_goto_poi'
+    ACTION_GO_TO_POI    = f'{ROBOT_NAMESPACE}/autonomy/goto_poi'
     CMD_VEL_TOPIC       = f'{ROBOT_NAMESPACE}/ui_teleop/cmd_vel'
     
     SERVICE_PAUSE       = f'{ROBOT_NAMESPACE}/control_selection/pause'

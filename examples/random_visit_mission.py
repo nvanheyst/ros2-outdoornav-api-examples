@@ -1,28 +1,11 @@
 """
-Loop random GoTo destinations inside a map's bounding box, forever or N times.
+Fire random GoTo destinations inside a map's bounding box.
 
-Usage:
-    python random_visit_mission.py                            # 10 hops, default map
-    python random_visit_mission.py 20                         # 20 hops
-    python random_visit_mission.py 0 42                       # infinite, seed=42
-    python random_visit_mission.py --map-uuid <uuid> 5
+  python random_visit_mission.py 10       # 10 hops
+  python random_visit_mission.py 0 42     # infinite, seed=42
 
-Flow:
-    1. mission_manager/get_map → all points.
-    2. Compute the lat/lon bounding box from those points.
-    3. Loop:
-       a. Roll a random (lat, lon) inside the box.
-       b. Fire ExecuteGoTo with that pose.
-       c. Block on the result, log success/failure, repeat.
-    4. Ctrl-C cancels the in-flight goto cleanly.
-
-Notes:
-    - Uses ExecuteGoTo (free GPS pose), NOT GoToPOI. The destinations are
-      random — they have nothing to do with whatever POIs the map has.
-    - The bounding box is just for picking a plausible target inside the
-      mapped area; OutdoorNav still runs its own drivability checks and
-      will reject targets it can't reach.
-    - Set count=0 to loop until interrupted.
+Uses ExecuteGoTo (free GPS pose), not GoToPOI — targets are random points
+in the bbox, autonomy rejects whatever it can't reach.
 """
 
 import math
@@ -42,7 +25,10 @@ ROBOT_NAMESPACE = '/a300_00003'
 SERVICE_GET_MAP   = f'{ROBOT_NAMESPACE}/mission_manager/get_map'
 ACTION_EXECUTE_GOTO = f'{ROBOT_NAMESPACE}/autonomy/goto'
 
-DEFAULT_MAP_ID = 'REPLACE_WITH_MAP_UUID'
+# random_visit doesn't need map points — it picks random GPS inside the bbox.
+# If you want POI-based traversal, see traverse_entire_map_shortest.py.
+
+DEFAULT_MAP_ID = "REPLACE_WITH_MAP_UUID"
 
 POSITION_TOLERANCE_M = 1.0
 YAW_TOLERANCE_RAD = 0.4

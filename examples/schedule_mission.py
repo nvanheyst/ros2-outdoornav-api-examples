@@ -1,39 +1,11 @@
 """
-Wait until a target wall-clock time, then start a mission via ExecuteMission.
+Wait until a target wall-clock time then fire ExecuteMission.
 
-Usage:
-    python schedule_mission.py 2026-06-22T18:00:00Z
-    python schedule_mission.py 2026-06-22T18:00:00-05:00
-    python schedule_mission.py +30s     # shortcut: schedule N seconds from now
+  python schedule_mission.py 2026-06-22T18:00:00Z
+  python schedule_mission.py +30s
 
-ISO 8601 with explicit timezone is required (Z for UTC, or ±HH:MM offset).
-The shortcut form (+Ns / +Nm / +Nh) is handy for testing the polling/cancel
-plumbing without waiting for a real wall-clock moment.
-
-Flow:
-    1. Parse target time.
-    2. Sleep with a 5-second heartbeat so the operator can see the countdown.
-    3. Fire ExecuteMission action with MISSION_ID/MAP_ID.
-    4. Block on the result.
-    5. Ctrl-C at any point cancels the mission cleanly.
-
-Promoting this to a real cron:
-    This script is intentionally minimal — it's the inside of one scheduled
-    fire. For production scheduling, wrap it with the OS-level pieces rather
-    than reimplementing them in Python:
-
-    - **systemd timer + service unit.** Define a oneshot service that runs
-      `python schedule_mission.py +0s` (or hardcoded target), and a matching
-      .timer unit (`OnCalendar=*-*-* 06:00:00`) for daily/weekly cadence.
-      systemd handles missed-fire-after-boot, logging, restart-on-failure,
-      and per-user vs system context — none of which belong in this script.
-
-    - **chrony for clock discipline.** ROS bag timestamps, mission
-      schedules, and any "fire at 06:00" guarantee all assume the robot's
-      clock is right. On a fleet, run `chronyd` against a local NTP source
-      (the dispatch host, or a GNSS-disciplined box) so drift stays under a
-      few ms. Without this, "06:00" on the robot might be 06:00:14 in the
-      operator's tooling.
+For a real schedule you'd wrap this in a systemd timer + chrony, not loop
+in Python. This is the inside of one fire.
 """
 
 import sys
@@ -48,10 +20,10 @@ from clearpath_navigation_msgs.action import ExecuteMission
 
 
 ROBOT_NAMESPACE = '/a300_00003'
-ACTION_EXECUTE_MISSION = f'{ROBOT_NAMESPACE}/mission_manager/execute_mission'
+ACTION_EXECUTE_MISSION = f'{ROBOT_NAMESPACE}/autonomy/mission'
 
-MISSION_ID = 'REPLACE_WITH_MISSION_UUID'
-MAP_ID = 'REPLACE_WITH_MAP_UUID'
+MISSION_ID = "REPLACE_WITH_MISSION_UUID"
+MAP_ID = "REPLACE_WITH_MAP_UUID"
 
 HEARTBEAT_S = 5.0
 
