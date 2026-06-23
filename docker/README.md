@@ -1,27 +1,32 @@
 # Dev environment
 
 Docker image with ROS 2 Jazzy + the Clearpath message + API library overlay
-pre-built. Saves you from installing the overlay on the host.
+pre-built. This saves you from installing the overlay on the host.
 
 The image is published to GHCR as `ghcr.io/nvanheyst/onav-api-examples:latest`.
 `latest` is only published from `main`. PR builds publish temporary
 `pr-<number>` tags.
 
-Docker CI runs `./scripts/smoke_all.sh` and `./scripts/scenario_smoke.sh`
-inside the built container before it pushes an image.
+Docker CI runs `./ci/smoke_all.sh` and `./ci/scenario_smoke.sh` inside the
+built container before it pushes an image.
+
 In scenario smoke, you should see three `==> scenario:` lines and dry-run
 output for each command.
 
 ## Pull
 
-    cd docker
-    docker compose pull        # always gets :latest
+```bash
+cd docker
+docker compose pull        # always gets :latest
+```
 
 ## (Optional) build locally
 
 If you're iterating on the Dockerfile itself:
 
-    docker compose build
+```bash
+docker compose build
+```
 
 ## RMW / DDS
 
@@ -44,18 +49,26 @@ If your robot uses a non-default ROS domain, set `ROS_DOMAIN_ID` in `.env`
 
 ## Shell
 
-    docker compose run --rm dev
+```bash
+docker compose run --rm dev
+```
 
 ROS and the overlay are already sourced in `~/.bashrc`. The repo's
 `examples/` directory is mounted at `/examples`. Run any example:
 
-    python3 /examples/random_visit_mission.py 5
-    python3 /examples/row_generator_square.py
+```bash
+python3 /examples/random_visit_mission.py 5
+python3 /examples/row_generator_square.py
+```
 
 ## One-shot
 
-    docker compose run --rm dev python3 /examples/load_map_from_file.py /examples/data/my_map.json
+```bash
+docker compose run --rm dev python3 /examples/load_map_from_file.py /examples/data/my_map.json
+```
 
 ## Teardown
 
-    docker compose down
+```bash
+docker compose down
+```

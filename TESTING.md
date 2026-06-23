@@ -20,7 +20,7 @@ failure and triage before moving on.
    export ONAV_MISSION_ID=<...>
    export ONAV_POI_ID=<...>
    ```
-4. Run `./scripts/smoke_all.sh` and confirm 0 failures. Skipped is OK
+4. Run `./ci/smoke_all.sh` and confirm 0 failures. Skipped is OK
    when run outside the dev container.
 
 ## Live sanity (before the sweep)

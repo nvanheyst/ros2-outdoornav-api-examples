@@ -4,11 +4,11 @@
 # - No script imports clearpath_outdoornav_api_lib (the audit hook).
 #
 # Run from the repo root:
-#   ./scripts/smoke_all.sh
+#   ./ci/smoke_all.sh
 
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit
 
 # 1. No app-lib imports anywhere in examples/ or common/.
 echo "==> grep: no clearpath_outdoornav_api_lib imports"

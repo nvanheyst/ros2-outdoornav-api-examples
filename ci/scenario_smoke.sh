@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit
 
 if ! python3 -c "import rclpy" >/dev/null 2>&1; then
   echo "==> skipping scenario smoke (rclpy not available)"

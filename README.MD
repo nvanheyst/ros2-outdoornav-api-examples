@@ -1,12 +1,12 @@
 # Clearpath OutdoorNav 2.x — raw ROS 2 API examples
 
-Personal supplementary examples for OutdoorNav. Each script is one
-runnable file using raw rclpy + clearpath/clearpath_outdoornav messages.
+Supplementary examples for OutdoorNav. Each script is one runnable file
+using raw rclpy + clearpath/clearpath_outdoornav messages.
 
 **Why raw ROS?** So `ros2 service list`, `ros2 topic echo`, and `grep` for
 a service path are all the audit tools you need. There are no SDK
 wrappers in this folder — no `clearpath_outdoornav_api_lib` imports
-anywhere. The `scripts/smoke_all.sh` harness enforces this with a grep.
+anywhere. The `ci/smoke_all.sh` harness enforces this with a grep.
 
 Pure-Python on CPU. No VLM, no vision. Should work on any AMP that has
 OutdoorNav up.
@@ -24,9 +24,10 @@ examples/
   control/     teleop, pause, resume, stop
   data/        logs, recordings
   diagnostics/ where am I, what services are live
-scripts/       smoke (offline) and live-dryrun harnesses
+ci/            smoke (offline) and live-dryrun harnesses
 docker/        dev environment (ROS 2 Jazzy + clearpath overlay)
 ```
+`ci/` contains validation harnesses, not API examples.
 
 ## Quick start
 
@@ -54,11 +55,12 @@ python3 /examples/control/drive_robot_forward.py --help
 
 The image lives at `ghcr.io/nvanheyst/onav-api-examples:latest`.
 `latest` is only published from `main`. PR builds publish temporary
-`pr-<number>` tags. Docker CI also runs `./scripts/smoke_all.sh` inside
-the built container before push. It also runs
-`./scripts/scenario_smoke.sh` for a basic dry-run scenario pass. The
-image defaults to FastDDS to match OutdoorNav. For Cyclone or Zenoh see
-`docker/README.md`.
+`pr-<number>` tags. Docker CI also runs `./ci/smoke_all.sh` inside
+the built container before push. It also runs `./ci/scenario_smoke.sh`
+for a basic dry-run scenario pass.
+
+The image defaults to FastDDS to match OutdoorNav. For Cyclone or Zenoh
+see `docker/README.md`.
 
 ### Without Docker
 
@@ -74,21 +76,10 @@ The polygon row-generator needs three Python deps; see `requirements.txt`.
 ### Sanity check
 
 ```bash
-./scripts/smoke_all.sh         # --help on every example, no live ROS needed
-./scripts/scenario_smoke.sh    # a few representative dry-run flows
-./scripts/live_dryrun.sh       # --dry-run sweep against a running OnAV stack
+./ci/smoke_all.sh         # --help on every example, no live ROS needed
+./ci/scenario_smoke.sh    # a few representative dry-run flows
+./ci/live_dryrun.sh       # --dry-run sweep against a running OnAV stack
 ```
-
-## Branch protection
-
-Before you merge, set branch protection on `main` and require these checks:
-- `ros2-jazzy-ci / python-lint`
-- `ros2-jazzy-ci / shell-lint`
-- `ros2-jazzy-ci / jazzy-offline-smoke`
-- `docker / pr-build-test-and-push-temp` (or `docker / pr-build-and-test-fork` for fork PRs)
-
-Also make sure Actions can write packages, or PR image push and cleanup
-will fail.
 
 ## Examples — index
 
