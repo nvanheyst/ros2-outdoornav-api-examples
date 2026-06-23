@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
-# Small scenario smoke checks for CI.
-# Runs a few representative scripts in --dry-run mode.
-# Expected output includes:
-#   - three "==> scenario:" lines
-#   - dry-run output from each script
+# Quick scenario smoke checks for CI.
+# Runs a few real scripts in --dry-run mode.
+# Expect three "==> scenario:" lines and dry-run output from each command.
 
 set -euo pipefail
 

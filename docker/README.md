@@ -9,8 +9,8 @@ The image is published to GHCR as `ghcr.io/nvanheyst/onav-api-examples:latest`.
 
 Docker CI runs `./scripts/smoke_all.sh` and `./scripts/scenario_smoke.sh`
 inside the built container before it pushes an image.
-The scenario smoke should print three `==> scenario:` lines and dry-run
-output from each command.
+In scenario smoke, you should see three `==> scenario:` lines and dry-run
+output for each command.
 
 ## Pull
 

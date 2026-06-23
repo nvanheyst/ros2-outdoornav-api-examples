@@ -81,14 +81,14 @@ The polygon row-generator needs three Python deps; see `requirements.txt`.
 
 ## Branch protection
 
-Set GitHub branch protection on `main` and require these checks:
+Before you merge, set branch protection on `main` and require these checks:
 - `ros2-jazzy-ci / python-lint`
 - `ros2-jazzy-ci / shell-lint`
 - `ros2-jazzy-ci / jazzy-offline-smoke`
 - `docker / pr-build-test-and-push-temp` (or `docker / pr-build-and-test-fork` for fork PRs)
 
-Also set Actions workflow permissions to allow package writes so PR image
-push and cleanup can work.
+Also make sure Actions can write packages, or PR image push and cleanup
+will fail.
 
 ## Examples — index
 
