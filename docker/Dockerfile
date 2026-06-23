@@ -38,6 +38,6 @@ RUN echo 'source /opt/ros/jazzy/setup.bash' >> /etc/bash.bashrc \
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-WORKDIR /examples
+WORKDIR /repo
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["/bin/bash"]

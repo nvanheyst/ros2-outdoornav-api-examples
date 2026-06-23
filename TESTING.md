@@ -38,6 +38,7 @@ failure and triage before moving on.
 | Square row coverage | `./examples/maps/row_generator_square.py --lat 50.1094 --lon -97.3187 --width 30 --height 20 --spacing 5 --name smoke_rows` | Logs `created map 'smoke_rows' (…) with N nodes, N-1 edges`. UI shows snake of nodes. | "no GPS fix" → not applicable here (no fix needed); errors during create → check service is up. |
 | Polygon row coverage | `./examples/maps/row_generator_polygon.py --tag cov-2` | Requires ≥3 POIs tagged `cov-2`. Logs node + edge counts. | "need >=3 POIs" → tag mismatch; pyproj/shapely import error → `pip install -r requirements.txt`. |
 | Bulk edit edges | `./examples/maps/bulk_edit_edges.py --speed 0.5 -- $ONAV_MAP_ID 50.1094 -97.3187 15` then `./examples/maps/bulk_edit_edges.py $ONAV_MAP_ID 50.1094 -97.3187 15 --dry-run` | Dry-run lists matching edges; live call updates them. | Edges array empty → centre is too far from the map; permission denied → wrong namespace. |
+| Slow zone around me | `./examples/maps/bulk_edit_edges.py $ONAV_MAP_ID 15 --around-me --speed 0.3 --dry-run` then drop `--dry-run` | Waits for fix, then lists/updates edges within 15 m of the robot. | "no fix within 10 s" → robot not localized. |
 
 ## Missions
 
@@ -50,6 +51,8 @@ failure and triage before moving on.
 | Schedule a mission | `./examples/missions/schedule_mission.py +30s` | Countdown, then mission fires at T0. | "target time is in the past" → date parsing issue; permission denied → namespace. |
 | Battery loop | `./examples/missions/loop_mission_battery_aware.py --threshold 30 --loops 2` | Two loop iterations (assuming battery > 30%). | Battery never drops — fine; mission rejected at each loop — autonomy state. |
 | Record path | `./examples/missions/record_path.py smoke_recorded --min-distance 1.0` | Subscribes to fix, prints "N points…" every 10 samples. Ctrl-C → "captured N raw points → simplified to M → map smoke_recorded created". | No points accumulate → no fix; `create_map` errors → map service. |
+| Mission with recording (plumbing) | `./examples/missions/mission_with_recording.py --skip-mission` | start_recording OK → 5 s sleep → stop_recording OK. New log shows up in the UI. | "service not available" → run `service_inventory.py --grep log_manager`; if your stack uses `StartRecording`/`StopRecording` (not Trigger), swap the import. |
+| Mission with recording (full run) | `./examples/missions/mission_with_recording.py` | start_recording → ExecuteMission runs to completion → stop_recording. UI shows a single bracketed log. | "Goal rejected" → autonomy busy; stop_recording still fires in the finally block. |
 
 ## Control
 
@@ -57,10 +60,14 @@ failure and triage before moving on.
 |---|---|---|---|
 | Forward 1 m at 0.2 m/s | `./examples/control/drive_robot_forward.py --distance 1 --velocity 0.2` | Robot rolls ~1 m, stops; "stopped" log. | No motion → controller disabled, e-stop pressed. |
 | Service inventory (paused state) | `./examples/diagnostics/service_inventory.py --grep pause` | Lists `pause`/`resume` services your stack exposes; pick variant. | Empty → autonomy isn't running. |
-| Pause/resume (SetBool variant) | `./examples/control/pause_resume.py --hold 3` | Pause OK → 3 s → resume OK. | "service not available" → try `--variant trigger`. |
-| Pause/resume (Trigger variant) | `./examples/control/pause_resume.py --variant trigger --hold 3` | Same as above, opposite variant. | Same. |
+| Pause/resume (autonomy SetBool — default, 2.3) | `./examples/control/pause_resume.py --hold 3` | Pause OK → 3 s → resume OK. | "service not available" → try `--variant control_setbool` or `--variant autonomy_trigger`. |
+| Pause/resume (control_selection SetBool — legacy) | `./examples/control/pause_resume.py --variant control_setbool --hold 3` | Same lifecycle on the older path. | Same. |
+| Pause/resume (autonomy Trigger — legacy) | `./examples/control/pause_resume.py --variant autonomy_trigger --hold 3` | Same lifecycle on the older type. | Same. |
 | Pause + teleop in-mission | `./examples/control/pause_and_teleop.py --hold 5` | GoToPOI fires → after 10 s pauses → 180° turn + 1 m drive while paused → resume → completes. | POI rejected → wrong POI uuid; autonomy/stop fails → ignore (best-effort cleanup). |
 | Stop autonomy | `./examples/control/stop_autonomy.py` | `OK` log, robot brakes. | "service not available" → wrong namespace. |
+| Cancel mission (self-started) | `./examples/control/cancel_mission.py --after 5` | Mission starts, runs ~5 s, cancels via goal handle, status returns 5 (CANCELED). | "goal rejected" → autonomy busy; "status=4" → mission completed faster than `--after`. |
+| Dock workflow (plumbing) | `./examples/control/dock_workflow.py --dry-run` | Lists the 5 calls it would make. | None. |
+| Dock workflow (live) | `./examples/control/dock_workflow.py --dock-name smoke_dock --template default_dock --backup-distance 2 --hold 5` | AddDockCurrentPose OK → 2 m back-up → Dock action succeeds → 5 s hold → Undock action succeeds → RemoveDock OK. | "AddDockCurrentPose failed" → wrong template name (check robot config); Dock action rejected → dock target not visible to the sensor; in sim, try `--template a300_default_dock` or whatever your sim ships. |
 
 ## Data
 
@@ -68,6 +75,7 @@ failure and triage before moving on.
 |---|---|---|---|
 | List logs (dry) | `./examples/data/delete_logs.py --dry-run` | "found N log(s) … will delete N (dry-run)" | Service unavailable → logger not running. |
 | Purge oldest only | `./examples/data/delete_logs.py --keep-recent 1 --dry-run` then drop `--dry-run` | Lists then deletes everything > 1 h old. | Same. |
+| Delete entry but keep media | `./examples/data/delete_logs.py --keep-media --keep-record --dry-run` then drop `--dry-run` | UI entries vanish, files stay on disk. | Same. |
 
 ## Diagnostics
 
