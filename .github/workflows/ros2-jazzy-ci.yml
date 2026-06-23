@@ -1,0 +1,51 @@
+name: ros2-jazzy-ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: jazzy-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install ruff
+        run: python3 -m pip install --upgrade pip ruff
+      - name: Ruff
+        run: ruff check --select E9,F63,F7,F82 common examples
+
+  shell-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install shellcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends shellcheck
+      - name: ShellCheck
+        run: shellcheck scripts/*.sh
+
+  jazzy-offline-smoke:
+    runs-on: ubuntu-latest
+    container:
+      image: ros:jazzy-ros-base
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install python dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends python3-pip
+          python3 -m pip install --no-cache-dir --break-system-packages -r requirements.txt
+      - name: Compile python modules
+        run: python3 -m compileall common examples
+      - name: Run offline smoke
+        run: ./scripts/smoke_all.sh

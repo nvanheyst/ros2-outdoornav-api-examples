@@ -4,8 +4,13 @@ Docker image with ROS 2 Jazzy + the Clearpath message + API library overlay
 pre-built. Saves you from installing the overlay on the host.
 
 The image is published to GHCR as `ghcr.io/nvanheyst/onav-api-examples:latest`.
-**That is the only tag** — CI rebuilds and overwrites it on every push to
-`main`. There are no version tags; always pull `:latest`.
+`latest` is only published from `main`. PR builds publish temporary
+`pr-<number>` tags.
+
+Docker CI runs `./scripts/smoke_all.sh` and `./scripts/scenario_smoke.sh`
+inside the built container before it pushes an image.
+The scenario smoke should print three `==> scenario:` lines and dry-run
+output from each command.
 
 ## Pull
 

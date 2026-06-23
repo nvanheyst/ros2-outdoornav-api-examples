@@ -52,9 +52,12 @@ docker compose run --rm dev
 python3 /examples/control/drive_robot_forward.py --help
 ```
 
-The image lives at `ghcr.io/nvanheyst/onav-api-examples:latest`. Only
-`:latest` exists; CI overwrites it on every push to `main`. The image
-defaults to FastDDS to match OutdoorNav. For Cyclone or Zenoh see
+The image lives at `ghcr.io/nvanheyst/onav-api-examples:latest`.
+`latest` is only published from `main`. PR builds publish temporary
+`pr-<number>` tags. Docker CI also runs `./scripts/smoke_all.sh` inside
+the built container before push. It also runs
+`./scripts/scenario_smoke.sh` for a basic dry-run scenario pass. The
+image defaults to FastDDS to match OutdoorNav. For Cyclone or Zenoh see
 `docker/README.md`.
 
 ### Without Docker
@@ -72,8 +75,20 @@ The polygon row-generator needs three Python deps; see `requirements.txt`.
 
 ```bash
 ./scripts/smoke_all.sh         # --help on every example, no live ROS needed
+./scripts/scenario_smoke.sh    # a few representative dry-run flows
 ./scripts/live_dryrun.sh       # --dry-run sweep against a running OnAV stack
 ```
+
+## Branch protection
+
+Set GitHub branch protection on `main` and require these checks:
+- `ros2-jazzy-ci / python-lint`
+- `ros2-jazzy-ci / shell-lint`
+- `ros2-jazzy-ci / jazzy-offline-smoke`
+- `docker / pr-build-test-and-push-temp` (or `docker / pr-build-and-test-fork` for fork PRs)
+
+Also set Actions workflow permissions to allow package writes so PR image
+push and cleanup can work.
 
 ## Examples — index
 
