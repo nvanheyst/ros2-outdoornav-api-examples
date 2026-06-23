@@ -9,7 +9,7 @@
 #   ./scripts/live_dryrun.sh
 
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit
 
 PASS=0; FAIL=0
 

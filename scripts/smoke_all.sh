@@ -34,7 +34,8 @@ while IFS= read -r script; do
         echo "  skipped: $script  ($missing)"; skip=$((skip + 1))
     else
         echo "  FAIL:    $script"
-        echo "$out" | sed 's/^/      /'
+        out_indented=${out//$'\n'/$'\n      '}
+        echo "      $out_indented"
         fail=$((fail + 1))
     fi
 done < <(find examples/ -name "*.py" -not -name "__init__.py")
