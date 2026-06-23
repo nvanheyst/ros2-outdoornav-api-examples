@@ -12,17 +12,17 @@ Showcases the full pause/resume/stop interface in one flow:
   ./pause_and_teleop.py --poi <uuid> --map <uuid>
   ONAV_POI_ID=<uuid> ONAV_MAP_ID=<uuid> ./pause_and_teleop.py
 
-CAUTION: pause/resume service path differs between OutdoorNav releases.
-This example uses `<ns>/control_selection/pause` (SetBool). If your stack
-exposes only `<ns>/autonomy/pause` (Trigger), see pause_resume.py for that
-variant. Run `ros2 service list | grep pause` against your live stack to
-confirm which you have.
+CAUTION: pause/resume paths differ across OutdoorNav releases. This
+example uses `<ns>/autonomy/pause` (SetBool) — the OutdoorNav 2.3
+default. If your stack only exposes `<ns>/control_selection/pause` or
+the Trigger flavour of `<ns>/autonomy/pause`, run `pause_resume.py`
+with the matching `--variant` to confirm before retrying this script.
 
 Touches:
   action  <namespace>/autonomy/goto_poi            (ExecuteGoToPOI)
   topic   <namespace>/ui_teleop/cmd_vel            (TwistStamped, publish)
-  service <namespace>/control_selection/pause      (SetBool)
-  service <namespace>/control_selection/resume     (SetBool)
+  service <namespace>/autonomy/pause               (SetBool)
+  service <namespace>/autonomy/resume              (SetBool)
   service <namespace>/autonomy/stop                (Trigger, shutdown-time)
 """
 
@@ -62,8 +62,8 @@ class PauseAndTeleop(Node):
 
         self.poi_action = f"{namespace}/autonomy/goto_poi"
         self.cmd_vel_topic = f"{namespace}/ui_teleop/cmd_vel"
-        self.pause_srv = f"{namespace}/control_selection/pause"
-        self.resume_srv = f"{namespace}/control_selection/resume"
+        self.pause_srv = f"{namespace}/autonomy/pause"
+        self.resume_srv = f"{namespace}/autonomy/resume"
         self.stop_srv = f"{namespace}/autonomy/stop"
 
         self.poi_client = ActionClient(self, ExecuteGoToPOI, self.poi_action)

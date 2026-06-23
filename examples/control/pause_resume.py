@@ -1,21 +1,26 @@
 #!/usr/bin/env python3
 """Pause then resume the running autonomy. Minimal demo.
 
-  ./pause_resume.py                          # pause, sleep 5 s, resume
-  ./pause_resume.py --hold 30                # pause, sleep 30 s, resume
-  ./pause_resume.py --variant trigger        # use /autonomy/pause Trigger services
+  ./pause_resume.py                          # default: /autonomy/pause SetBool
+  ./pause_resume.py --hold 30                # 30 s pause
+  ./pause_resume.py --variant control_setbool   # legacy /control_selection/pause SetBool
+  ./pause_resume.py --variant autonomy_trigger  # legacy /autonomy/pause Trigger
 
-Two service interfaces exist depending on OnAV release:
-  control_selection variant (default):
-    <ns>/control_selection/pause     (std_srvs/SetBool, data=true to pause)
-    <ns>/control_selection/resume    (std_srvs/SetBool, data=true to resume)
-  autonomy variant:
+Three service interfaces exist across OnAV releases — observed on
+current OutdoorNav 2.3 stacks:
+  autonomy_setbool (default):
+    <ns>/autonomy/pause              (std_srvs/SetBool, data=true to pause)
+    <ns>/autonomy/resume             (std_srvs/SetBool, data=true to resume)
+  control_setbool (older integration layer):
+    <ns>/control_selection/pause     (std_srvs/SetBool)
+    <ns>/control_selection/resume    (std_srvs/SetBool)
+  autonomy_trigger (older inner autonomy):
     <ns>/autonomy/pause              (std_srvs/Trigger)
     <ns>/autonomy/resume             (std_srvs/Trigger)
 
-Run `ros2 service list | grep -E 'pause|resume'` on your stack to confirm
-which is live before picking --variant. Both forms are kept here so the
-example doubles as a probe.
+Run `service_inventory.py | grep -E 'pause|resume'` on your stack first
+to confirm both the path and the type — same path can carry different
+types between releases.
 """
 
 from __future__ import annotations
@@ -36,14 +41,21 @@ from common.ros_helpers import wait_for_service, call_service
 class PauseResume(Node):
     def __init__(self, namespace: str, variant: str):
         super().__init__("pause_resume")
-        if variant == "set_bool":
+        if variant == "autonomy_setbool":
+            self.pause_srv = f"{namespace}/autonomy/pause"
+            self.resume_srv = f"{namespace}/autonomy/resume"
+            self.pause_client = self.create_client(SetBool, self.pause_srv)
+            self.resume_client = self.create_client(SetBool, self.resume_srv)
+            self._call_pause = lambda: call_service(self, self.pause_client, SetBool.Request(data=True))
+            self._call_resume = lambda: call_service(self, self.resume_client, SetBool.Request(data=True))
+        elif variant == "control_setbool":
             self.pause_srv = f"{namespace}/control_selection/pause"
             self.resume_srv = f"{namespace}/control_selection/resume"
             self.pause_client = self.create_client(SetBool, self.pause_srv)
             self.resume_client = self.create_client(SetBool, self.resume_srv)
             self._call_pause = lambda: call_service(self, self.pause_client, SetBool.Request(data=True))
             self._call_resume = lambda: call_service(self, self.resume_client, SetBool.Request(data=True))
-        else:
+        else:  # autonomy_trigger
             self.pause_srv = f"{namespace}/autonomy/pause"
             self.resume_srv = f"{namespace}/autonomy/resume"
             self.pause_client = self.create_client(Trigger, self.pause_srv)
@@ -70,21 +82,25 @@ def main(argv=None):
     parser = make_parser(doc=__doc__)
     parser.add_argument("--hold", type=float, default=5.0,
                         help="Seconds to remain paused (default 5).")
-    parser.add_argument("--variant", choices=["set_bool", "trigger"], default="set_bool",
-                        help="Service variant: set_bool (control_selection) or trigger (autonomy).")
+    parser.add_argument("--variant",
+                        choices=["autonomy_setbool", "control_setbool", "autonomy_trigger"],
+                        default="autonomy_setbool",
+                        help="Service variant. Default matches OutdoorNav 2.3 (autonomy/pause SetBool).")
     args = parser.parse_args(argv)
 
     if args.dry_run:
         ns = args.namespace
-        v = args.variant
-        if v == "set_bool":
-            print(f"[dry-run] would call {ns}/control_selection/pause (SetBool, data=true)")
-            print(f"[dry-run] then sleep {args.hold}s")
-            print(f"[dry-run] then call {ns}/control_selection/resume (SetBool, data=true)")
+        if args.variant == "autonomy_setbool":
+            path = f"{ns}/autonomy/pause"
+            print(f"[dry-run] would call {path} (SetBool, data=true)")
+        elif args.variant == "control_setbool":
+            path = f"{ns}/control_selection/pause"
+            print(f"[dry-run] would call {path} (SetBool, data=true)")
         else:
-            print(f"[dry-run] would call {ns}/autonomy/pause (Trigger)")
-            print(f"[dry-run] then sleep {args.hold}s")
-            print(f"[dry-run] then call {ns}/autonomy/resume (Trigger)")
+            path = f"{ns}/autonomy/pause"
+            print(f"[dry-run] would call {path} (Trigger)")
+        print(f"[dry-run] then sleep {args.hold}s")
+        print(f"[dry-run] then call resume on the matching path")
         return
 
     rclpy.init()

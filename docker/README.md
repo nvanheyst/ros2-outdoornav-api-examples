@@ -53,18 +53,20 @@ If your robot uses a non-default ROS domain, set `ROS_DOMAIN_ID` in `.env`
 docker compose run --rm dev
 ```
 
-ROS and the overlay are already sourced in `~/.bashrc`. The repo's
-`examples/` directory is mounted at `/examples`. Run any example:
+ROS and the overlay are already sourced in `~/.bashrc`. The repo is
+mounted at `/repo` and the shell starts there. Run any example:
 
 ```bash
-python3 /examples/random_visit_mission.py 5
-python3 /examples/row_generator_square.py
+python3 examples/missions/random_visit_mission.py --count 5
+python3 examples/maps/row_generator_square.py --lat 50.1094 --lon -97.3187 \
+    --width 30 --height 20 --spacing 5 --name smoke_rows
 ```
 
 ## One-shot
 
 ```bash
-docker compose run --rm dev python3 /examples/load_map_from_file.py /examples/data/my_map.json
+docker compose run --rm dev python3 examples/maps/load_map_from_file.py \
+    path/to/your_map.json
 ```
 
 ## Teardown

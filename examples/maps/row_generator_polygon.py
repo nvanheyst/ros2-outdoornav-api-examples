@@ -9,13 +9,17 @@ carries the row spacing + width:
   ./row_generator_polygon.py                  # tag 'cov-2'
   ./row_generator_polygon.py --tag cov-3
   ./row_generator_polygon.py --tag cov-3 --dry-run
+  ./row_generator_polygon.py --tag cov-3 --replace   # overwrite existing
+
+By default this errors if a map with the same name (the tag) already
+exists. Pass --replace to delete the existing map first.
 
 Needs: pip install shapely networkx pyproj
 
 Touches:
   service <namespace>/mission_manager/get_all_points_of_interest (GetAllPointsOfInterest)
   service <namespace>/mission_manager/get_all_maps               (GetAllMaps)
-  service <namespace>/mission_manager/delete_map                 (DeleteById)
+  service <namespace>/mission_manager/delete_map                 (DeleteById, only with --replace)
   service <namespace>/mission_manager/create_map                 (CreateMap)
 """
 
@@ -140,14 +144,17 @@ class RowGenPolygon(Node):
         pois.sort(key=lambda p: p.name)
         return pois
 
-    def delete_existing_map(self, name: str) -> None:
+    def find_existing_map(self, name: str) -> str | None:
         resp = call_service(self, self.get_all_maps_client, GetAllMaps.Request())
         for m in getattr(resp, "maps", []):
             if m.name == name:
-                req = DeleteById.Request(); req.uuid = m.uuid
-                call_service(self, self.delete_map_client, req)
-                self.get_logger().info(f"deleted existing map {name!r}")
-                return
+                return m.uuid
+        return None
+
+    def delete_map(self, map_uuid: str, name: str) -> None:
+        req = DeleteById.Request(); req.uuid = map_uuid
+        call_service(self, self.delete_map_client, req)
+        self.get_logger().info(f"deleted existing map {name!r} ({map_uuid})")
 
     def push_map(self, name: str, graph, utm_to_ll, edge_radius: float) -> str:
         points = []
@@ -180,16 +187,24 @@ class RowGenPolygon(Node):
         )
         return map_uuid
 
-    def run(self, dry_run: bool = False) -> None:
+    def run(self, dry_run: bool = False, replace: bool = False) -> int:
         pois = self.fetch_polygon_pois()
         if len(pois) < 3:
             self.get_logger().error(f"need >=3 POIs tagged {self.tag!r}; got {len(pois)}")
-            return
+            return 1
 
         cfg = json.loads(pois[0].custom_fields_json or "{}")
         spacing = float(cfg.get("spacing", 6.0))
         width = float(cfg.get("width", 1.5))
         map_name = self.tag
+
+        existing_uuid = self.find_existing_map(map_name)
+        if existing_uuid and not replace and not dry_run:
+            self.get_logger().error(
+                f"map {map_name!r} already exists ({existing_uuid}). "
+                "Pass --replace to overwrite, or change --tag."
+            )
+            return 1
 
         lon0 = sum(p.longitude for p in pois) / len(pois)
         lat0 = sum(p.latitude for p in pois) / len(pois)
@@ -209,26 +224,33 @@ class RowGenPolygon(Node):
             f"{len(graph.nodes)} nodes, {len(graph.edges)} edges generated from polygon"
         )
         if dry_run:
-            self.get_logger().info("[dry-run] skipping delete_map + create_map")
-            return
+            verb = "would replace" if existing_uuid else "would create"
+            self.get_logger().info(f"[dry-run] {verb} map {map_name!r}")
+            return 0
 
-        self.delete_existing_map(map_name)
+        if existing_uuid:
+            self.delete_map(existing_uuid, map_name)
         self.push_map(map_name, graph, utm_to_ll, edge_radius=width)
+        return 0
 
 
 def main(argv=None):
     parser = make_parser(doc=__doc__)
     parser.add_argument("--tag", default="cov-2", help="POI tag identifying polygon vertices.")
+    parser.add_argument("--replace", action="store_true",
+                        help="If a map with the same name exists, delete it first.")
     args = parser.parse_args(argv)
 
+    rc = 1
     rclpy.init()
     node = RowGenPolygon(args.namespace, args.tag)
     try:
         node.wait()
-        node.run(dry_run=args.dry_run)
+        rc = node.run(dry_run=args.dry_run, replace=args.replace)
     finally:
         node.destroy_node()
         rclpy.shutdown()
+    sys.exit(rc)
 
 
 if __name__ == "__main__":

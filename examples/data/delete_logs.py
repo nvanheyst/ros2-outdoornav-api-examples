@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
 """Delete event logs via logger/delete_log.
 
-  ./delete_logs.py                           # delete all logs
+  ./delete_logs.py                           # delete all logs (incl. media + bag)
   ./delete_logs.py --keep-recent 24          # keep last 24 hours
   ./delete_logs.py --dry-run                 # list what would be deleted
+  ./delete_logs.py --keep-media              # remove entries but leave media on disk
+  ./delete_logs.py --keep-record             # remove entries but keep raw bag chunks
+
+Defaults to scorched earth (delete_media=True, purge_record=True). The two
+opt-out flags above let you preserve files on disk if you only want the
+UI entry gone.
 
 Touches:
   service <namespace>/logger/get_all_logs   (GetAllLogs)
   service <namespace>/logger/delete_log     (DeleteLog)
-
-purge_record=true also removes bag chunks; without it only the entry
-disappears from the UI and disk isn't reclaimed.
 """
 
 from __future__ import annotations
@@ -29,8 +32,10 @@ from common.ros_helpers import wait_for_service, call_service
 
 
 class DeleteLogs(Node):
-    def __init__(self, namespace: str):
+    def __init__(self, namespace: str, delete_media: bool, purge_record: bool):
         super().__init__("delete_logs")
+        self.delete_media = delete_media
+        self.purge_record = purge_record
         self.get_all_srv = f"{namespace}/logger/get_all_logs"
         self.delete_srv = f"{namespace}/logger/delete_log"
         self.get_all_client = self.create_client(GetAllLogs, self.get_all_srv)
@@ -47,8 +52,8 @@ class DeleteLogs(Node):
     def delete(self, log_uuid: str) -> bool:
         req = DeleteLog.Request()
         req.uuid = log_uuid
-        req.delete_media = True
-        req.purge_record = True
+        req.delete_media = self.delete_media
+        req.purge_record = self.purge_record
         resp = call_service(self, self.delete_client, req)
         return bool(getattr(resp, "success", True))
 
@@ -57,10 +62,18 @@ def main(argv=None):
     parser = make_parser(doc=__doc__)
     parser.add_argument("--keep-recent", type=float, default=None,
                         help="Keep logs from the last N hours.")
+    parser.add_argument("--keep-media", action="store_true",
+                        help="Don't delete media files (default: delete).")
+    parser.add_argument("--keep-record", action="store_true",
+                        help="Don't purge bag chunks (default: purge).")
     args = parser.parse_args(argv)
 
     rclpy.init()
-    node = DeleteLogs(args.namespace)
+    node = DeleteLogs(
+        args.namespace,
+        delete_media=not args.keep_media,
+        purge_record=not args.keep_record,
+    )
     try:
         node.wait()
         logs = node.fetch_logs()

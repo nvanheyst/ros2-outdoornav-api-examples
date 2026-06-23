@@ -20,8 +20,9 @@ services:
       - FASTRTPS_DEFAULT_PROFILES_FILE=${FASTRTPS_DEFAULT_PROFILES_FILE:-}
       - ZENOH_CONFIG_OVERRIDE=${ZENOH_CONFIG_OVERRIDE:-}
     volumes:
-      - ../examples:/examples:rw
+      - ../:/repo:rw
       - ./cyclonedds.xml:/cyclonedds.xml:ro
+    working_dir: /repo
     stdin_open: true
     tty: true
     command: ["/bin/bash"]
