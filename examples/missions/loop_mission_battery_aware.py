@@ -1,0 +1,135 @@
+#!/usr/bin/env python3
+"""Loop a mission until battery drops below threshold or max loops hit.
+
+  ./loop_mission_battery_aware.py --threshold 30 --loops 5
+  ONAV_MAP_ID=<uuid> ONAV_MISSION_ID=<uuid> ./loop_mission_battery_aware.py
+
+Spins the executor manually while the mission action is in flight so the BMS
+subscription keeps draining.
+
+Touches:
+  action <namespace>/autonomy/mission     (ExecuteMission)
+  topic  <namespace>/platform/bms/state   (BatteryState, subscribe)
+"""
+
+from __future__ import annotations
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+
+import rclpy
+from rclpy.node import Node
+from rclpy.action import ActionClient
+from sensor_msgs.msg import BatteryState
+from clearpath_navigation_msgs.action import ExecuteMission
+
+from common.argparse_base import make_parser
+from common.config import map_id as default_map_id, mission_id as default_mission_id
+from common.ros_helpers import wait_for_action
+
+
+class BatteryAwareLoop(Node):
+    def __init__(self, namespace: str, threshold_percent: float, max_loops: int,
+                 mission_uuid: str, map_uuid: str):
+        super().__init__("battery_aware_loop")
+        self.threshold = threshold_percent
+        self.max_loops = max_loops
+        self.mission_uuid = mission_uuid
+        self.map_uuid = map_uuid
+        self.latest_percent: float | None = None
+        self.battery_topic = f"{namespace}/platform/bms/state"
+        self.mission_action = f"{namespace}/autonomy/mission"
+        self.create_subscription(BatteryState, self.battery_topic, self._bms_cb, 10)
+        self.mission_client = ActionClient(self, ExecuteMission, self.mission_action)
+        self._goal_handle = None
+
+    def _bms_cb(self, msg: BatteryState) -> None:
+        # BatteryState.percentage is 0.0–1.0
+        self.latest_percent = float(msg.percentage) * 100.0
+
+    def wait_for_initial(self) -> None:
+        wait_for_action(self, self.mission_client, self.mission_action)
+        self.get_logger().info("waiting for first BMS reading...")
+        while self.latest_percent is None:
+            rclpy.spin_once(self, timeout_sec=1.0)
+        self.get_logger().info(f"initial battery: {self.latest_percent:.1f}%")
+
+    def run_mission_blocking(self) -> bool:
+        goal = ExecuteMission.Goal(mission_uuid=self.mission_uuid, map_uuid=self.map_uuid)
+        send_future = self.mission_client.send_goal_async(goal)
+        rclpy.spin_until_future_complete(self, send_future)
+        self._goal_handle = send_future.result()
+        if not self._goal_handle or not self._goal_handle.accepted:
+            self.get_logger().error("mission goal rejected")
+            return False
+        result_future = self._goal_handle.get_result_async()
+        while rclpy.ok() and not result_future.done():
+            rclpy.spin_once(self, timeout_sec=0.5)
+        self._goal_handle = None
+        status = result_future.result().status if result_future.result() else None
+        return status == 4
+
+    def cancel_in_flight(self) -> None:
+        if self._goal_handle is None:
+            return
+        self.get_logger().warn("cancelling in-flight mission...")
+        cancel_future = self._goal_handle.cancel_goal_async()
+        rclpy.spin_until_future_complete(self, cancel_future)
+
+    def loop(self) -> None:
+        for i in range(1, self.max_loops + 1):
+            rclpy.spin_once(self, timeout_sec=0.1)
+            rclpy.spin_once(self, timeout_sec=0.1)
+            pct = self.latest_percent
+            self.get_logger().info(
+                f"loop {i}/{self.max_loops}  battery={pct:.1f}%  threshold={self.threshold:.1f}%"
+            )
+            if pct < self.threshold:
+                self.get_logger().warn(
+                    f"battery {pct:.1f}% below threshold {self.threshold:.1f}% — stopping"
+                )
+                return
+            ok = self.run_mission_blocking()
+            if not ok:
+                self.get_logger().error(f"loop {i} mission failed — stopping")
+                return
+        self.get_logger().info(f"completed all {self.max_loops} loops")
+
+
+def main(argv=None):
+    parser = make_parser(doc=__doc__)
+    parser.add_argument("--threshold", type=float, default=30.0,
+                        help="Stop when battery drops below this percent (default 30).")
+    parser.add_argument("--loops", type=int, default=10,
+                        help="Maximum loop count (default 10).")
+    parser.add_argument("--mission-uuid", default=default_mission_id() or None,
+                        help="Mission UUID (or $ONAV_MISSION_ID).")
+    parser.add_argument("--map-uuid", default=default_map_id() or None,
+                        help="Map UUID (or $ONAV_MAP_ID).")
+    args = parser.parse_args(argv)
+
+    if not args.mission_uuid or not args.map_uuid:
+        parser.error("--mission-uuid and --map-uuid required (or set $ONAV_MISSION_ID and $ONAV_MAP_ID)")
+
+    if args.dry_run:
+        print(f"[dry-run] would loop ExecuteMission via {args.namespace}/autonomy/mission")
+        print(f"[dry-run] mission={args.mission_uuid} map={args.map_uuid} "
+              f"threshold={args.threshold}% max_loops={args.loops}")
+        return
+
+    rclpy.init()
+    node = BatteryAwareLoop(args.namespace, args.threshold, args.loops,
+                            args.mission_uuid, args.map_uuid)
+    try:
+        node.wait_for_initial()
+        node.loop()
+    except KeyboardInterrupt:
+        node.cancel_in_flight()
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    main()

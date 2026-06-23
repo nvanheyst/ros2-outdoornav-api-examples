@@ -1,0 +1,5 @@
+# Stock ROS 2 Jazzy installs cover rclpy + sensor_msgs + std_srvs already.
+# These two are only needed by examples/maps/row_generator_polygon.py.
+networkx>=3.0
+pyproj>=3.6
+shapely>=2.0
