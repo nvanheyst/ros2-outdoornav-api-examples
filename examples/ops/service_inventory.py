@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""List the OnAV services live on the current ROS graph.
+"""List the OutdoorNav services live on the current ROS graph.
 
 Thin wrapper around `Node.get_service_names_and_types()`. Run this
 when a wait-for-service hangs — before assuming a service is missing,
 confirm what the graph actually advertises. Paths AND types differ
-across OnAV releases (e.g. `<ns>/autonomy/pause` is `SetBool` on 2.3
+across OutdoorNav releases (e.g. `<ns>/autonomy/pause` is `SetBool` on 2.3
 but was `Trigger` in older releases). A `--grep pause` against the
 live graph tells you in two seconds.
 

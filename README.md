@@ -1,6 +1,6 @@
 # Clearpath OutdoorNav — unofficial API examples
 
-A personal collection of raw-ROS-2 examples and notes I've put together
+A personal collection of ROS-2 examples and notes I've put together
 while ramping up on Clearpath's OutdoorNav API. The official API reference,
 message definitions, and supported examples live in the upstream
 [clearpath_outdoornav](https://github.com/clearpathrobotics/clearpath_outdoornav)
@@ -13,20 +13,13 @@ Pure Python, single-file examples. Each script uses raw `rclpy` plus the
 `topic echo`, and `grep` are enough to audit them. Works against any
 robot running OutdoorNav 2.x (Jackal / Husky / Warthog AMP).
 
-## If you're starting out, here's an order that worked for me
+## If you're starting out
 
-```
-Orient    → docs/getting-started-insights.md  ops/service_inventory.py  ops/where_am_i.py  ops/doctor.py
-Build     → missions/generate_traversal_mission.py  missions/recover_from_abort.py  patterns/graceful_shutdown.py
-Tune      → patterns/parameter_runtime.py
-Notify    → ops/notify_on_mission_failure.py
-Maybe later → mini-projects/IDEAS.md  (open to suggestions)
-```
+Read [docs/getting-started-insights.md](docs/getting-started-insights.md)
+first, then try a couple of examples to get connected and reporting:
 
-The orient row gets you connected and reporting; the build row covers the
-shape of a real mission and recovery; tune is for runtime adjustment; notify
-closes the loop when something fails while you're away. Mini-projects are
-deeper end-to-end examples that aren't built yet.
+- [examples/ops/where_am_i.py](examples/ops/where_am_i.py) — confirm you can talk to the robot and read its GPS fix.
+- [examples/ops/doctor.py](examples/ops/doctor.py) — one-call snapshot of autonomy state, battery, and topic liveness.
 
 ## Quick start
 
@@ -70,7 +63,7 @@ export ONAV_POI_ID=<poi-uuid>
 ```bash
 ./ci/smoke_all.sh         # --help on every example, no live ROS needed
 ./ci/scenario_smoke.sh    # representative dry-run flows
-./ci/live_dryrun.sh       # --dry-run sweep against a running OnAV stack
+./ci/live_dryrun.sh       # --dry-run sweep against a running OutdoorNav stack
 ```
 
 ## Layout
@@ -134,7 +127,7 @@ writing scripts.
 | File | API surface | What it does |
 |---|---|---|
 | `ops/where_am_i.py` | `localization/fix` | Print the latest GPS fix and exit. |
-| `ops/service_inventory.py` | ROS graph | List all services live on the graph; `--grep` filters. First stop when a wait-for-service hangs — paths and types differ across OnAV releases. |
+| `ops/service_inventory.py` | ROS graph | List all services live on the graph; `--grep` filters. First stop when a wait-for-service hangs — paths and types differ across OutdoorNav releases. |
 | `ops/delete_logs.py` | `logger/{get_all_logs, delete_log}` | Enumerate event logs and delete each. `--keep-recent`, `--dry-run` supported. `--keep-media` / `--keep-record` opt out of scorched earth. |
 | `ops/delete_all.py` | `mission_manager/{delete_all, get_all_maps, get_all_network_missions, get_all_points_of_interest}` | Wipe every map, mission, POI. Useful as cleanup after running these examples leaves test data littering the UI. `--dry-run` lists counts; `--confirm` actually fires. |
 | `ops/notify_on_mission_failure.py` | `autonomy/mission/_action/status`, `autonomy/status`, `localization/fix`, optional `sensors/camera_*/color/compressed` | Passive watcher: subscribe to the ExecuteMission action's status topic, ping a notifier when a goal aborts. Catches any abort regardless of who launched the mission. `--via stdout,email,webhook,sms` (comma-separated, configs via env vars). Email attaches the latest camera frame if `--camera-topic` is set; SMS is a one-line heads-up. |

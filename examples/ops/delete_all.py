@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Wipe every map, mission, and POI from the OnAV database.
+"""Wipe every map, mission, and POI from the OutdoorNav database.
 
 Useful as cleanup after running these API examples — they accumulate
 test maps, missions, and POIs that clutter the UI. One service call

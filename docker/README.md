@@ -12,7 +12,7 @@ pre-built. Three roles:
 3. **A drop-in API client for offboard machines or the robot itself** —
    the image runs on Linux, macOS (Docker Desktop), or Windows (WSL2).
    Set `ROS_DOMAIN_ID` and pick an RMW (FastDDS / Cyclone / Zenoh) to
-   match the robot, and your scripts talk to OnAV as if you were on the
+   match the robot, and your scripts talk to OutdoorNav as if you were on the
    robot. Useful when:
    - your laptop is a different OS than the robot,
    - you don't want to install the overlay on the host you're using,
@@ -31,6 +31,10 @@ output for each command.
 
 ## Pull
 
+The image is public — no GHCR login needed. Pulling the prebuilt `:latest`
+is the preferred path; you only need to build locally if you're changing the
+Dockerfile.
+
 ```bash
 cd docker
 docker compose pull        # always gets :latest
@@ -47,8 +51,10 @@ docker compose build
 ## RMW / DDS
 
 OutdoorNav defaults to FastDDS (same as ROS 2 Jazzy). This container does
-the same. If you run a different RMW on your robot, copy `.env.example` to
-`.env` and uncomment the block that matches.
+the same. Copy `.env.example` to `.env`: it ships a complete, ready-to-run
+CycloneDDS + namespace block you can use as-is (or edit the three values to
+match your robot). To stay on FastDDS instead, comment the CycloneDDS lines
+and uncomment the FastDDS block.
 
 - **FastDDS** — default. Optionally point `FASTRTPS_DEFAULT_PROFILES_FILE`
   at your own XML for custom transport / discovery tuning.
@@ -61,7 +67,10 @@ the same. If you run a different RMW on your robot, copy `.env.example` to
   your config.
 
 If your robot uses a non-default ROS domain, set `ROS_DOMAIN_ID` in `.env`
-(default `25` to match the local gz sim stack).
+(default `25` to match the local gz sim stack). Set `ONAV_NAMESPACE` in the
+same file to point every script at your robot (default `/a300_00003`); the
+value is normalized, so `a300_00003`, `/a300_00003`, and `/a300_00003/` all
+work.
 
 ## Shell
 

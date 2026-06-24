@@ -76,7 +76,7 @@ them into something you can debug a week later.
 What hardening a fleet actually requires beyond default ROS 2. Probably
 covers SROS2 / DDS-level access controls, namespace isolation, and audit
 logging of who sent which action goal. Not "ROS 2 security 101" — focused
-on the specific surface a customer node touches when talking to OnAV.
+on the specific surface a customer node touches when talking to OutdoorNav.
 
 Shape:
 - `enclave/` — example SROS2 enclave with permissions XML.
