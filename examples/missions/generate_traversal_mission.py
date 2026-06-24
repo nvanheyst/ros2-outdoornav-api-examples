@@ -13,6 +13,12 @@ each point.
 Chain map (all node degrees ≤ 2) walks from a degree-1 endpoint. Mesh maps
 use a least-turn graph walk over the connection graph.
 
+Compare with `traverse_entire_map_gotos.py`: that one walks the nodes
+ad-hoc via ExecuteGoTo (no mission stored, free-GPS path, greedy NN
+from current fix). This one is the persistent, edge-following version:
+the resulting NetworkMission is re-runnable from the UI and the robot
+sticks to the network corridors.
+
 Touches:
   service <namespace>/mission_manager/get_map           (GetMap)
   service <namespace>/mission_manager/create_mission    (CreateNetworkMission)

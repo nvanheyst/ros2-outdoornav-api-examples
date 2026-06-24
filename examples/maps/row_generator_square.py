@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 """Boustrophedon coverage map over a rectangle (centre + w/h + bearing).
 
-Pushes the map via mission_manager/create_map. Pair with
-generate_traversal_mission.py to drive it.
+Pushes the map via mission_manager/create_map. **One-way edges** —
+each waypoint connects to the next in sequence (chain). All geometry
+comes from CLI flags, so re-running with the same args reproduces the
+same map. Pair with `generate_traversal_mission.py` to drive it.
+
+Compare with `row_generator_polygon.py`: that one is POI-driven (you
+edit polygon vertices in the UI then re-run), generates two-way edges
+with the polygon perimeter as a border, and is more useful for organic
+shapes. This one is the simplest possible rectangle-from-args case.
 
   ./row_generator_square.py --lat 50.10940 --lon -97.31870 \
       --width 60 --height 40 --spacing 6 --name row_coverage_square

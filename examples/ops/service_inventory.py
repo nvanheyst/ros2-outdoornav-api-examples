@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-"""List the OnAV services live on the current ROS graph, grouped by namespace.
+"""List the OnAV services live on the current ROS graph.
 
-Useful first step in any debugging session: did the stack actually publish
-the service path you're about to call? Run this before pause_resume.py or
-the dock examples.
+Thin wrapper around `Node.get_service_names_and_types()`. Run this
+when a wait-for-service hangs — before assuming a service is missing,
+confirm what the graph actually advertises. Paths AND types differ
+across OnAV releases (e.g. `<ns>/autonomy/pause` is `SetBool` on 2.3
+but was `Trigger` in older releases). A `--grep pause` against the
+live graph tells you in two seconds.
 
   ./service_inventory.py
   ./service_inventory.py --grep pause          # only services matching 'pause'
+  ./service_inventory.py --grep mission_manager
 
 Touches: ROS 2 graph API (Node.get_service_names_and_types).
 """

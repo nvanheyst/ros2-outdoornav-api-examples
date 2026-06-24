@@ -27,8 +27,8 @@ failure and triage before moving on.
 
 | Command | Expected | Failure mode |
 |---|---|---|
-| `./examples/diagnostics/service_inventory.py --grep mission_manager` | Lists at least `create_map`, `create_mission`, `create_waypoint`, `get_map`, `get_all_maps`, etc. | Empty output → wrong namespace or wrong DDS config; `autonomy/pause` only → you're talking to an OnAV release that doesn't expose `control_selection/pause`. |
-| `./examples/diagnostics/where_am_i.py` | Prints `lat,lon,alt` line on stdout, exit 0. | Timeout → robot doesn't have a fix. |
+| `./examples/ops/service_inventory.py --grep mission_manager` | Lists at least `create_map`, `create_mission`, `create_waypoint`, `get_map`, `get_all_maps`, etc. | Empty output → wrong namespace or wrong DDS config; `autonomy/pause` only → you're talking to an OnAV release that doesn't expose `control_selection/pause`. |
+| `./examples/ops/where_am_i.py` | Prints `lat,lon,alt` line on stdout, exit 0. | Timeout → robot doesn't have a fix. |
 
 ## Maps
 
@@ -47,7 +47,7 @@ failure and triage before moving on.
 | Build traversal mission | `./examples/missions/generate_traversal_mission.py --name smoke_traversal` | "chain map detected …" or "mesh map detected …", then waypoints appended in batches of 10. Mission appears in UI. | "GetMap returned no points" → wrong map id; "CreateNetworkMission returned no uuid" → service issue. |
 | Build + run | `./examples/missions/generate_traversal_mission.py --name smoke_traversal --run` | As above, then mission goes through ExecuteMission and the robot drives. | Goal rejected → autonomy not in idle; sim/HW issue. |
 | Random visit | `./examples/missions/random_visit_mission.py --count 3` | Three GoTo goals fire; each prints `OK` or `FAILED — continuing`. | Many `FAILED` → tolerance / map bbox too generous; goal rejected → mission already in flight. |
-| Traverse entire map (greedy) | `./examples/missions/traverse_entire_map_shortest.py` | Prints naive vs greedy length, then ExecuteGoTo per node. | "no points on map" → bad map id; "still waiting" loop → action server down. |
+| Traverse entire map via gotos | `./examples/missions/traverse_entire_map_gotos.py` | Prints naive vs greedy length, then ExecuteGoTo per node. | "no points on map" → bad map id; "still waiting" loop → action server down. |
 | Schedule a mission | `./examples/missions/schedule_mission.py +30s` | Countdown, then mission fires at T0. | "target time is in the past" → date parsing issue; permission denied → namespace. |
 | Battery loop | `./examples/missions/loop_mission_battery_aware.py --threshold 30 --loops 2` | Two loop iterations (assuming battery > 30%). | Battery never drops — fine; mission rejected at each loop — autonomy state. |
 | Record path | `./examples/missions/record_path.py smoke_recorded --min-distance 1.0` | Subscribes to fix, prints "N points…" every 10 samples. Ctrl-C → "captured N raw points → simplified to M → map smoke_recorded created". | No points accumulate → no fix; `create_map` errors → map service. |
@@ -59,7 +59,7 @@ failure and triage before moving on.
 | Step | Command | Expected | Failure mode |
 |---|---|---|---|
 | Forward 1 m at 0.2 m/s | `./examples/control/drive_robot_forward.py --distance 1 --velocity 0.2` | Robot rolls ~1 m, stops; "stopped" log. | No motion → controller disabled, e-stop pressed. |
-| Service inventory (paused state) | `./examples/diagnostics/service_inventory.py --grep pause` | Lists `pause`/`resume` services your stack exposes; pick variant. | Empty → autonomy isn't running. |
+| Service inventory (paused state) | `./examples/ops/service_inventory.py --grep pause` | Lists `pause`/`resume` services your stack exposes; pick variant. | Empty → autonomy isn't running. |
 | Pause/resume (autonomy SetBool — default, 2.3) | `./examples/control/pause_resume.py --hold 3` | Pause OK → 3 s → resume OK. | "service not available" → try `--variant control_setbool` or `--variant autonomy_trigger`. |
 | Pause/resume (control_selection SetBool — legacy) | `./examples/control/pause_resume.py --variant control_setbool --hold 3` | Same lifecycle on the older path. | Same. |
 | Pause/resume (autonomy Trigger — legacy) | `./examples/control/pause_resume.py --variant autonomy_trigger --hold 3` | Same lifecycle on the older type. | Same. |
@@ -69,18 +69,16 @@ failure and triage before moving on.
 | Dock workflow (plumbing) | `./examples/control/dock_workflow.py --dry-run` | Lists the 5 calls it would make. | None. |
 | Dock workflow (live) | `./examples/control/dock_workflow.py --dock-name smoke_dock --template default_dock --backup-distance 2 --hold 5` | AddDockCurrentPose OK → 2 m back-up → Dock action succeeds → 5 s hold → Undock action succeeds → RemoveDock OK. | "AddDockCurrentPose failed" → wrong template name (check robot config); Dock action rejected → dock target not visible to the sensor; in sim, try `--template a300_default_dock` or whatever your sim ships. |
 
-## Data
+## Ops
 
 | Step | Command | Expected | Failure mode |
 |---|---|---|---|
-| List logs (dry) | `./examples/data/delete_logs.py --dry-run` | "found N log(s) … will delete N (dry-run)" | Service unavailable → logger not running. |
-| Purge oldest only | `./examples/data/delete_logs.py --keep-recent 1 --dry-run` then drop `--dry-run` | Lists then deletes everything > 1 h old. | Same. |
-| Delete entry but keep media | `./examples/data/delete_logs.py --keep-media --keep-record --dry-run` then drop `--dry-run` | UI entries vanish, files stay on disk. | Same. |
-
-## Diagnostics
-
-Both already exercised above. Re-run anytime to confirm the stack still
-matches the assumptions in your other commands.
+| List logs (dry) | `./examples/ops/delete_logs.py --dry-run` | "found N log(s) … will delete N (dry-run)" | Service unavailable → logger not running. |
+| Purge oldest only | `./examples/ops/delete_logs.py --keep-recent 1 --dry-run` then drop `--dry-run` | Lists then deletes everything > 1 h old. | Same. |
+| Delete entry but keep media | `./examples/ops/delete_logs.py --keep-media --keep-record --dry-run` then drop `--dry-run` | UI entries vanish, files stay on disk. | Same. |
+| Database wipe (dry) | `./examples/ops/delete_all.py --dry-run` | Prints `N maps, M missions, K POIs would be deleted`. | get_all_* hangs → mission_manager backend not responsive on this stack. |
+| Database wipe (live) | `./examples/ops/delete_all.py --confirm` | `OK` from delete_all; UI now empty. **Irreversible.** | Refused without `--confirm` — that's the safety. |
+| `where_am_i`, `service_inventory` | already exercised in **Live sanity** at the top. | — | — |
 
 ## What "failure" means here
 

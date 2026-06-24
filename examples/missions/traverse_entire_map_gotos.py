@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
-"""Visit every map node in greedy nearest-neighbour order from the current GPS fix.
+"""Visit every map node ad-hoc via ExecuteGoTo, in greedy NN order from the current fix.
 
-  ./traverse_entire_map_shortest.py --map-uuid <uuid>
-  ./traverse_entire_map_shortest.py --map-uuid <uuid> --naive   # for comparison
-  ONAV_MAP_ID=<uuid> ./traverse_entire_map_shortest.py
+  ./traverse_entire_map_gotos.py --map-uuid <uuid>
+  ./traverse_entire_map_gotos.py --map-uuid <uuid> --naive   # for comparison
+  ONAV_MAP_ID=<uuid> ./traverse_entire_map_gotos.py
 
-Map nodes aren't POIs, so this uses ExecuteGoTo with a synthetic Waypoint per
-node rather than ExecuteGoToPOI.
+Map nodes aren't POIs, so this uses ExecuteGoTo with a synthetic
+Waypoint per node rather than ExecuteGoToPOI.
+
+Compare with `generate_traversal_mission.py`: that one builds a
+persistent NetworkMission + Waypoints (stored, UI-visible, re-runnable)
+and the robot follows map edges. This one is the ephemeral version:
+no records left behind, robot picks its own GPS path between nodes
+(ignoring edges), and the order varies with where you start because
+it's greedy NN from the live fix.
 
 Touches:
   service <namespace>/mission_manager/get_map  (GetMap)

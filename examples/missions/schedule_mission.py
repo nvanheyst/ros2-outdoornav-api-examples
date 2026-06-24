@@ -5,8 +5,9 @@
   ./schedule_mission.py +30s
   ./schedule_mission.py +5m --mission-uuid <uuid> --map-uuid <uuid>
 
-For a real schedule you'd wrap this in a systemd timer + chrony, not a Python
-loop. This is the inside of one fire.
+Not a scheduler. This is the wait-then-fire that you would invoke from
+a real scheduler (systemd timer, cron, etc.) — the python loop here is
+just to demonstrate the action call.
 
 Touches: action <namespace>/autonomy/mission (ExecuteMission).
 """

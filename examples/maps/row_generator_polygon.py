@@ -6,6 +6,14 @@ name suffix (cov-2-1, cov-2-2, ...). The first POI's custom_fields_json
 carries the row spacing + width:
     {"spacing": 6.0, "width": 1.5}
 
+**Two-way edges** plus the polygon perimeter as a border, so the robot
+can re-enter the field at any side. Compare with
+`row_generator_square.py`: that one takes geometry from CLI flags
+(one-shot, one-way chain edges); this one reads polygon vertices from
+the POI database, so you can drag POIs around in the UI and re-run to
+regenerate the map. Both are one-shot — neither reacts to POI moves
+without you re-running the script.
+
   ./row_generator_polygon.py                  # tag 'cov-2'
   ./row_generator_polygon.py --tag cov-3
   ./row_generator_polygon.py --tag cov-3 --dry-run

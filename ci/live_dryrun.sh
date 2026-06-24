@@ -26,8 +26,8 @@ run() {
 }
 
 # Read-only - actually run.
-run "service inventory" python3 examples/diagnostics/service_inventory.py --grep mission_manager
-run "where am I"        python3 examples/diagnostics/where_am_i.py --timeout 5
+run "service inventory" python3 examples/ops/service_inventory.py --grep mission_manager
+run "where am I"        python3 examples/ops/where_am_i.py --timeout 5
 
 # Mutating - dry-run only.
 run "row gen square (dry)" python3 examples/maps/row_generator_square.py \
@@ -35,7 +35,7 @@ run "row gen square (dry)" python3 examples/maps/row_generator_square.py \
 if [ -n "${ONAV_MAP_ID:-}" ]; then
     run "traversal mission (dry)" python3 examples/missions/generate_traversal_mission.py --dry-run
     run "random visit (dry)"      python3 examples/missions/random_visit_mission.py --dry-run --count 3
-    run "traverse shortest (dry)" python3 examples/missions/traverse_entire_map_shortest.py --dry-run
+    run "traverse via gotos (dry)" python3 examples/missions/traverse_entire_map_gotos.py --dry-run
 fi
 if [ -n "${ONAV_MISSION_ID:-}" ] && [ -n "${ONAV_MAP_ID:-}" ]; then
     run "loop mission (dry)"     python3 examples/missions/loop_mission_battery_aware.py --dry-run
