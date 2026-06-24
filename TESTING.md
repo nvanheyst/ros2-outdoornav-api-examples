@@ -78,7 +78,29 @@ failure and triage before moving on.
 | Delete entry but keep media | `./examples/ops/delete_logs.py --keep-media --keep-record --dry-run` then drop `--dry-run` | UI entries vanish, files stay on disk. | Same. |
 | Database wipe (dry) | `./examples/ops/delete_all.py --dry-run` | Prints `N maps, M missions, K POIs would be deleted`. | get_all_* hangs → mission_manager backend not responsive on this stack. |
 | Database wipe (live) | `./examples/ops/delete_all.py --confirm` | `OK` from delete_all; UI now empty. **Irreversible.** | Refused without `--confirm` — that's the safety. |
+| Doctor snapshot | `./examples/ops/doctor.py --include-lifecycle` | Sections: env, autonomy, localization, power, topic liveness, Nav2 lifecycle. Each non-empty when the stack is healthy. | `(no message)` rows → topic isn't publishing in this namespace; lifecycle empty → `--include-lifecycle` was omitted or no managed nodes match the ns filter. |
+| Doctor with short collect | `./examples/ops/doctor.py --collect 1` | Same shape, may miss low-rate topics. | If battery / fix sections are empty, bump `--collect`. |
+| Notify watcher (dry) | `./examples/ops/notify_on_mission_failure.py --dry-run --via stdout,email,webhook,sms` | Prints the formatted body for every backend; no network. | Body missing fields → `FailureContext` dataclass out of sync with template. |
+| Notify watcher (live, stdout) | `./examples/ops/notify_on_mission_failure.py` then in another shell start and abort a mission (e.g. `./examples/control/cancel_mission.py --after 2`) | After the cancel, watcher prints nothing (cancels are silent by default). Re-run with `--also-on-cancel` to confirm; for a real abort, drop an e-stop or block the path. | No status seen → topic name mismatch; subscribed before any mission ran → expected. |
+| Notify watcher (live, email + sms) | `NOTIFY_SMTP_* … TWILIO_* … ./examples/ops/notify_on_mission_failure.py --via email,sms --camera-topic <ns>/sensors/camera_0/color/compressed` then trigger an abort | Email arrives with body + JPEG attachment; SMS arrives with one-line summary. | Email auth fail → SMTP creds / 2FA app password; SMS fail → Twilio creds / verified number. |
 | `where_am_i`, `service_inventory` | already exercised in **Live sanity** at the top. | — | — |
+
+## Patterns
+
+| Step | Command | Expected | Failure mode |
+|---|---|---|---|
+| Graceful shutdown (live, Ctrl-C) | `./patterns/graceful_shutdown.py` then Ctrl-C while the mission is in flight | "Ctrl-C — cancelling in-flight goal" log; mission status returns 5 (CANCELED); robot brakes. | Status returns 4 (SUCCEEDED) → you waited too long, mission finished before the interrupt; status missing → cancel ack timed out (check `cancel_goal_blocking` timeout). |
+| Param list | `./patterns/parameter_runtime.py --node <ns>/controller_server list` | Prints parameter names, one per line, then a `-- N parameter(s) --` footer. | Empty → wrong node name or service not exposed. |
+| Param get | `./patterns/parameter_runtime.py --node <ns>/controller_server get max_vel_x` | `max_vel_x = 0.5  (double)` style output. | "parameter not declared" → name typo or not exposed. |
+| Param set | `./patterns/parameter_runtime.py --node <ns>/controller_server set max_vel_x 0.3` | `OK: max_vel_x <- 0.3 (double)` | "FAILED: parameter is read-only" → declared with `read_only=True`; "rejected" → outside declared range. |
+
+## Recovery
+
+| Step | Command | Expected | Failure mode |
+|---|---|---|---|
+| Recover from abort (dry) | `./examples/missions/recover_from_abort.py --dry-run` | Lists the action paths and retry params without firing anything. | None expected. |
+| Recover from abort (live, no failure) | `./examples/missions/recover_from_abort.py --max-retries 2` | Runs ExecuteMission, hits SUCCEEDED, logs "mission succeeded after 1 attempt(s)" and exits. | If autonomy is busy → goal rejected on first attempt; check stack state. |
+| Recover from abort (live, induced failure) | Same command, then drop an obstacle in the path so the first attempt aborts | After abort: rich detail printed (code, goal_states), `--backoff` sleep, then ExecuteMissionFromGoal from the last in-flight waypoint. Up to `--max-retries` retries. | Robot can't replan → exhausts retries; that's the intended terminal behaviour. |
 
 ## What "failure" means here
 
