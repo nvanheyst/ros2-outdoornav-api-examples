@@ -1,11 +1,13 @@
-# Clearpath OutdoorNav 2.x — raw ROS 2 API examples
+# Clearpath OutdoorNav 2.x — ROS 2 API examples
 
 Runnable, single-file examples for OutdoorNav 2.x. Each script uses raw
 `rclpy` plus the `clearpath_*` message packages — no SDK wrappers — so
 the service / topic / action path is visible at every call site and
 `ros2 service list`, `topic echo`, and `grep` are enough to audit them.
 
-Pure Python. Works against any robot running OutdoorNav 2.x.
+Pure Python. Works against any robot running OutdoorNav 2.x such as
+Jackal, Husky and Warthog AMP. Currently have not included GPU
+examples or Observer examples with PTZ and Boson.
 
 ## Quick start
 
@@ -72,16 +74,16 @@ docker/        dev environment (ROS 2 Jazzy + clearpath overlay)
 | File | API surface | What it does |
 |---|---|---|
 | `maps/load_map_from_file.py` | `mission_manager/create_map` | JSON → CreateMap. Tolerates missing point ids. |
-| `maps/row_generator_square.py` | `mission_manager/create_map` | Boustrophedon over a centre + w/h + bearing rectangle. Map only. |
-| `maps/row_generator_polygon.py` | `mission_manager/{get_all_points_of_interest, get_all_maps, delete_map, create_map}` | Boustrophedon over a polygon defined by tagged POIs. **Destructive**: deletes any existing map matching the tag before recreating. |
+| `maps/row_generator_square.py` | `mission_manager/create_map` | Boustrophedon over a centre + w/h + bearing rectangle. **One-way** edges (chain). All geometry from CLI args — repeating requires retyping. |
+| `maps/row_generator_polygon.py` | `mission_manager/{get_all_points_of_interest, get_all_maps, delete_map, create_map}` | Boustrophedon inside a polygon defined by tagged POIs, with the polygon perimeter included as a border. **Two-way** edges (graph). POI-driven means you can move the vertices in the UI and re-run. Still one-shot though, not reactive. `--replace` overwrites an existing map of the same name. |
 | `maps/bulk_edit_edges.py` | `mission_manager/{get_map, clone_map, update_map_edges}`, `localization/fix` | Bulk edit edge speed limit (slow zone) and/or path radius inside a centre+radius zone. `--around-me` uses the robot's current fix as the centre. Optional `--clone`. |
 
 ### missions
 
 | File | API surface | What it does |
 |---|---|---|
-| `missions/generate_traversal_mission.py` | `mission_manager/{get_map, create_mission, create_waypoint}`, optional `autonomy/mission` | Build a runnable network mission that visits every node of a map. Sequential for chain maps, least-turn graph walk for mesh. Optional `--run`. |
-| `missions/traverse_entire_map_shortest.py` | `mission_manager/get_map`, `autonomy/goto` | Visit every node ad-hoc via ExecuteGoTo from the current fix; no mission record. Use when you don't want a mission stored. |
+| `missions/generate_traversal_mission.py` | `mission_manager/{get_map, create_mission, create_waypoint}`, optional `autonomy/mission` | **Persistent**, edge-following traversal. Builds a NetworkMission + Waypoints in the database so you can re-run it from the UI. Sequential for chain maps, least-turn graph walk for mesh. Robot follows map edges. Optional `--run`. |
+| `missions/traverse_entire_map_gotos.py` | `mission_manager/get_map`, `autonomy/goto` | **Ephemeral**, free-GPS traversal. Fires one ExecuteGoTo per node in greedy nearest-neighbour order from the current fix. No mission stored. Robot picks its own path between nodes — ignores edges. |
 | `missions/random_visit_mission.py` | `mission_manager/get_map`, `autonomy/goto` | Random GoTo goals inside the map bbox. Soak test. |
 | `missions/loop_mission_battery_aware.py` | `autonomy/mission`, `platform/bms/state` | Loop a mission until battery drops below threshold. |
 | `missions/schedule_mission.py` | `autonomy/mission` | Wait until a wall-clock target (ISO 8601 or `+30s/+5m`) then fire ExecuteMission. |
@@ -99,18 +101,14 @@ docker/        dev environment (ROS 2 Jazzy + clearpath overlay)
 | `control/cancel_mission.py` | `autonomy/mission` | Start a mission from this process, sleep `--after` seconds, then cancel via the goal handle. Demonstrates the action-cancel pattern. To stop a mission started elsewhere, use `stop_autonomy.py`. |
 | `control/dock_workflow.py` | `docking/dock_localizer/add_dock_current_pose`, `docking/dock_manager/delete_dock`, `ui_teleop/cmd_vel`, `autonomy/{dock_local, undock}` | Add a dock at the robot's current pose, back up, dock, hold, undock, clean up. End-to-end docking demo. |
 
-### data
+### ops
 
 | File | API surface | What it does |
 |---|---|---|
-| `data/delete_logs.py` | `logger/{get_all_logs, delete_log}` | Enumerate event logs and delete each. `--keep-recent`, `--dry-run` supported. `delete_media` / `purge_record` are configurable. |
-
-### diagnostics
-
-| File | API surface | What it does |
-|---|---|---|
-| `diagnostics/where_am_i.py` | `localization/fix` | Print the latest GPS fix and exit. |
-| `diagnostics/service_inventory.py` | ROS graph | List all services live on the graph; `--grep` filters. Run this before any pause/dock work to confirm the service path exists. |
+| `ops/where_am_i.py` | `localization/fix` | Print the latest GPS fix and exit. |
+| `ops/service_inventory.py` | ROS graph | List all services live on the graph; `--grep` filters. First stop when a wait-for-service hangs — paths and types differ across OnAV releases. |
+| `ops/delete_logs.py` | `logger/{get_all_logs, delete_log}` | Enumerate event logs and delete each. `--keep-recent`, `--dry-run` supported. `--keep-media` / `--keep-record` opt out of scorched earth. |
+| `ops/delete_all.py` | `mission_manager/{delete_all, get_all_maps, get_all_network_missions, get_all_points_of_interest}` | Wipe every map, mission, POI. Useful as cleanup after running these examples leaves test data littering the UI. `--dry-run` lists counts; `--confirm` actually fires. |
 
 ## Conventions
 
