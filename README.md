@@ -1,6 +1,6 @@
 # Clearpath OutdoorNav — unofficial API examples
 
-A personal collection of raw-ROS-2 examples and notes I've put together
+A personal collection of ROS-2 examples and notes I've put together
 while ramping up on Clearpath's OutdoorNav API. The official API reference,
 message definitions, and supported examples live in the upstream
 [clearpath_outdoornav](https://github.com/clearpathrobotics/clearpath_outdoornav)
@@ -13,20 +13,13 @@ Pure Python, single-file examples. Each script uses raw `rclpy` plus the
 `topic echo`, and `grep` are enough to audit them. Works against any
 robot running OutdoorNav 2.x (Jackal / Husky / Warthog AMP).
 
-## If you're starting out, here's an order that worked for me
+## If you're starting out
 
-```
-Orient    → docs/getting-started-insights.md  ops/service_inventory.py  ops/where_am_i.py  ops/doctor.py
-Build     → missions/generate_traversal_mission.py  missions/recover_from_abort.py  patterns/graceful_shutdown.py
-Tune      → patterns/parameter_runtime.py
-Notify    → ops/notify_on_mission_failure.py
-Maybe later → mini-projects/IDEAS.md  (open to suggestions)
-```
+Read [docs/getting-started-insights.md](docs/getting-started-insights.md)
+first, then try a couple of examples to get connected and reporting:
 
-The orient row gets you connected and reporting; the build row covers the
-shape of a real mission and recovery; tune is for runtime adjustment; notify
-closes the loop when something fails while you're away. Mini-projects are
-deeper end-to-end examples that aren't built yet.
+- [examples/ops/where_am_i.py](examples/ops/where_am_i.py) — confirm you can talk to the robot and read its GPS fix.
+- [examples/ops/doctor.py](examples/ops/doctor.py) — one-call snapshot of autonomy state, battery, and topic liveness.
 
 ## Quick start
 

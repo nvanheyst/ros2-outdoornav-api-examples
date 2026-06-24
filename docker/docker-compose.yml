@@ -1,10 +1,13 @@
 services:
   dev:
-    # Default: pull the prebuilt image from GHCR. There is only ever :latest;
-    # CI overwrites it on every push.
+    # Default: use the public prebuilt image from GHCR. There is only ever
+    # :latest; CI overwrites it on every push. pull_policy: missing means
+    # Compose pulls the public image when it isn't already local, instead of
+    # building from the Dockerfile below.
     image: ghcr.io/nvanheyst/onav-api-examples:latest
-    # If you want to build locally (e.g. testing a Dockerfile change),
-    # `docker compose build` uses this section instead.
+    pull_policy: missing
+    # The build section is only for iterating on the Dockerfile itself
+    # (`docker compose build`). Normal use pulls the public image above.
     build:
       context: .
       dockerfile: Dockerfile
@@ -19,6 +22,10 @@ services:
       - CYCLONEDDS_URI=${CYCLONEDDS_URI:-}
       - FASTRTPS_DEFAULT_PROFILES_FILE=${FASTRTPS_DEFAULT_PROFILES_FILE:-}
       - ZENOH_CONFIG_OVERRIDE=${ZENOH_CONFIG_OVERRIDE:-}
+      # Robot namespace the scripts read (see common/config.py). Keeps the
+      # /a300_00003 fallback when unset. Per-mission UUIDs are passed per call,
+      # not here.
+      - ONAV_NAMESPACE=${ONAV_NAMESPACE:-/a300_00003}
     volumes:
       - ../:/repo:rw
       - ./cyclonedds.xml:/cyclonedds.xml:ro

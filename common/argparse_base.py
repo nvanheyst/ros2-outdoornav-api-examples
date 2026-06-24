@@ -32,6 +32,7 @@ def make_parser(
     )
     parser.add_argument(
         "--namespace",
+        type=config.normalize_namespace,
         default=config.namespace(),
         help=f"Robot namespace (default from $ONAV_NAMESPACE or '{config.namespace()}').",
     )
