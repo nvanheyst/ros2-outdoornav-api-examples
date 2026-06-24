@@ -10,10 +10,10 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.." || exit
 
-# 1. No app-lib imports anywhere in examples/ or common/.
+# 1. No app-lib imports anywhere in examples/, patterns/, or common/.
 echo "==> grep: no clearpath_outdoornav_api_lib imports"
 if grep -rnE "^(from|import)[[:space:]]+clearpath_outdoornav_api_lib" \
-       examples/ common/ 2>/dev/null; then
+       examples/ patterns/ common/ 2>/dev/null; then
     echo "FAIL: app-lib import detected. This folder is raw-ROS only."
     exit 1
 fi
@@ -29,7 +29,7 @@ while IFS= read -r script; do
     out=$(python3 "$script" --help 2>&1) && rc=0 || rc=$?
     if [ "$rc" -eq 0 ]; then
         echo "  ok:      $script"; pass=$((pass + 1))
-    elif echo "$out" | grep -qE "No module named '(rclpy|clearpath_|sensor_msgs|geometry_msgs|std_srvs|action_msgs|shapely|networkx|pyproj)"; then
+    elif echo "$out" | grep -qE "No module named '(rclpy|clearpath_|sensor_msgs|geometry_msgs|std_srvs|action_msgs|lifecycle_msgs|rcl_interfaces|tf2_ros|shapely|networkx|pyproj)"; then
         missing=$(echo "$out" | grep -oE "No module named '[^']+'" | head -1)
         echo "  skipped: $script  ($missing)"; skip=$((skip + 1))
     else
@@ -38,7 +38,7 @@ while IFS= read -r script; do
         echo "      $out_indented"
         fail=$((fail + 1))
     fi
-done < <(find examples/ -name "*.py" -not -name "__init__.py")
+done < <(find examples/ patterns/ -name "*.py" -not -name "__init__.py")
 
 echo
 echo "pass=$pass skipped=$skip fail=$fail"

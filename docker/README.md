@@ -1,7 +1,23 @@
 # Dev environment
 
 Docker image with ROS 2 Jazzy + the Clearpath message + API library overlay
-pre-built. This saves you from installing the overlay on the host.
+pre-built. Three roles:
+
+1. **CI / smoke testing** — `docker compose run --rm dev ./ci/smoke_all.sh`.
+   What it does on every push to GitHub.
+2. **Dev environment for the examples** — `docker compose run --rm dev`
+   gives you an interactive shell with everything sourced, no host install
+   needed. The repo is bind-mounted at `/repo`, so edits on the host are
+   live inside the container.
+3. **A drop-in API client for offboard machines or the robot itself** —
+   the image runs on Linux, macOS (Docker Desktop), or Windows (WSL2).
+   Set `ROS_DOMAIN_ID` and pick an RMW (FastDDS / Cyclone / Zenoh) to
+   match the robot, and your scripts talk to OnAV as if you were on the
+   robot. Useful when:
+   - your laptop is a different OS than the robot,
+   - you don't want to install the overlay on the host you're using,
+   - the robot's onboard compute is busy and you want a thin client
+     elsewhere on the same network.
 
 The image is published to GHCR as `ghcr.io/nvanheyst/onav-api-examples:latest`.
 `latest` is only published from `main`. PR builds publish temporary

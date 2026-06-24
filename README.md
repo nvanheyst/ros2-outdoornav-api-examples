@@ -1,24 +1,44 @@
-# Clearpath OutdoorNav 2.x — ROS 2 API examples
+# Clearpath OutdoorNav — unofficial API examples
 
-Runnable, single-file examples for OutdoorNav 2.x. Each script uses raw
-`rclpy` plus the `clearpath_*` message packages — no SDK wrappers — so
-the service / topic / action path is visible at every call site and
-`ros2 service list`, `topic echo`, and `grep` are enough to audit them.
+A personal collection of raw-ROS-2 examples and notes I've put together
+while ramping up on Clearpath's OutdoorNav API. The official API reference,
+message definitions, and supported examples live in the upstream
+[clearpath_outdoornav](https://github.com/clearpathrobotics/clearpath_outdoornav)
+repo — start there. This repo is the stuff I wished I'd had in my first
+month: a working dev container and a few patterns the docs don't cover.
 
-Pure Python. Works against any robot running OutdoorNav 2.x such as
-Jackal, Husky and Warthog AMP. Currently have not included GPU
-examples or Observer examples with PTZ and Boson.
+Pure Python, single-file examples. Each script uses raw `rclpy` plus the
+`clearpath_*` message packages — no SDK wrappers — so the service / topic
+/ action path is visible at every call site and `ros2 service list`,
+`topic echo`, and `grep` are enough to audit them. Works against any
+robot running OutdoorNav 2.x (Jackal / Husky / Warthog AMP).
+
+## If you're starting out, here's an order that worked for me
+
+```
+Orient    → docs/getting-started-insights.md  ops/service_inventory.py  ops/where_am_i.py  ops/doctor.py
+Build     → missions/generate_traversal_mission.py  missions/recover_from_abort.py  patterns/graceful_shutdown.py
+Tune      → patterns/parameter_runtime.py
+Notify    → ops/notify_on_mission_failure.py
+Maybe later → mini-projects/IDEAS.md  (open to suggestions)
+```
+
+The orient row gets you connected and reporting; the build row covers the
+shape of a real mission and recovery; tune is for runtime adjustment; notify
+closes the loop when something fails while you're away. Mini-projects are
+deeper end-to-end examples that aren't built yet.
 
 ## Quick start
 
-In the dev container (recommended):
+In the dev container (recommended — see [docker/README.md](docker/README.md)
+for what the container is and isn't):
 
 ```bash
 cd docker
 docker compose pull
 docker compose run --rm dev        # interactive shell at /repo
 # inside:
-python3 examples/diagnostics/where_am_i.py --timeout 5
+python3 examples/ops/where_am_i.py --timeout 5
 ```
 
 Without Docker, source `/opt/ros/jazzy/setup.bash` plus an overlay that
@@ -26,7 +46,7 @@ ships `clearpath_*` messages, then run scripts directly from the repo
 root:
 
 ```bash
-./examples/diagnostics/where_am_i.py --timeout 5
+./examples/ops/where_am_i.py --timeout 5
 ./examples/control/drive_robot_forward.py --distance 1 --velocity 0.2
 ```
 
@@ -56,16 +76,24 @@ export ONAV_POI_ID=<poi-uuid>
 ## Layout
 
 ```
-common/        shared argparse / config / rclpy boilerplate
+common/         shared argparse / config / rclpy boilerplate
+docs/           getting-started insights
 examples/
-  maps/        create / load / edit maps
-  missions/    build / schedule / loop / traverse missions
-  control/     teleop, pause, resume, stop
-  data/        logs, recordings
-  diagnostics/ where am I, what services are live
-ci/            offline smoke + live dry-run harnesses
-docker/        dev environment (ROS 2 Jazzy + clearpath overlay)
+  maps/         create / load / edit maps
+  missions/     build / schedule / loop / traverse missions
+  control/      teleop, pause, resume, stop
+  ops/          diagnostics, log cleanup, notifications
+patterns/       small reusable recipes (graceful shutdown, runtime params)
+mini-projects/  ideas for larger end-to-end examples (not built yet)
+ci/             offline smoke + live dry-run harnesses
+docker/         dev environment + drop-in API client for any OS
 ```
+
+For each table below, upstream's
+[clearpath_outdoornav](https://github.com/clearpathrobotics/clearpath_outdoornav)
+repo and the official docs are the authoritative reference for the API
+surface listed. The descriptions here are how I think about them while
+writing scripts.
 
 ## Examples — index
 
@@ -110,6 +138,30 @@ docker/        dev environment (ROS 2 Jazzy + clearpath overlay)
 | `ops/delete_logs.py` | `logger/{get_all_logs, delete_log}` | Enumerate event logs and delete each. `--keep-recent`, `--dry-run` supported. `--keep-media` / `--keep-record` opt out of scorched earth. |
 | `ops/delete_all.py` | `mission_manager/{delete_all, get_all_maps, get_all_network_missions, get_all_points_of_interest}` | Wipe every map, mission, POI. Useful as cleanup after running these examples leaves test data littering the UI. `--dry-run` lists counts; `--confirm` actually fires. |
 | `ops/notify_on_mission_failure.py` | `autonomy/mission/_action/status`, `autonomy/status`, `localization/fix`, optional `sensors/camera_*/color/compressed` | Passive watcher: subscribe to the ExecuteMission action's status topic, ping a notifier when a goal aborts. Catches any abort regardless of who launched the mission. `--via stdout,email,webhook,sms` (comma-separated, configs via env vars). Email attaches the latest camera frame if `--camera-topic` is set; SMS is a one-line heads-up. |
+| `ops/doctor.py` | `autonomy/status`, `localization/fix`, `platform/bms/state`, `autonomy/mission/_action/status`, optional `<lifecycle_node>/get_state` | One-call diagnostic snapshot: env, autonomy state, battery, GPS fix age, last mission status, key topic liveness, and (with `--include-lifecycle`) every managed-node state. Replaces the "run a half-dozen tools to figure out what's up" scavenger hunt. |
+
+### missions (cont.)
+
+| File | API surface | What it does |
+|---|---|---|
+| `missions/recover_from_abort.py` | `autonomy/mission`, `autonomy/mission_from_goal`, `navigation/current_goal_id` | Run ExecuteMission. On abort, retry from the last in-flight waypoint via ExecuteMissionFromGoal, up to `--max-retries` times. Logs the rich abort detail (code, message, per-waypoint goal_states) before each retry. |
+
+### patterns
+
+Small reusable recipes you'll copy into your own scripts.
+
+| File | API surface | What it does |
+|---|---|---|
+| `patterns/graceful_shutdown.py` | any action `goal_handle.cancel_goal_async` | Cancel an in-flight action cleanly on Ctrl-C. Provides `spin_until_done_or_cancel()` and a `CancelOnShutdown` context manager. Demo `main()` runs ExecuteMission and cancels cleanly on interrupt. |
+| `patterns/parameter_runtime.py` | `<node>/{list,get,set,describe}_parameters` | `ros2 param`-equivalent in script form. List / get / set / describe parameters on a live remote node so you can tune Nav2 params (or anything else with a parameter server) without restart. |
+
+### mini-projects
+
+Larger end-to-end examples that span multiple files. See
+[mini-projects/IDEAS.md](mini-projects/IDEAS.md) for the backlog
+(perception gate, long-running supervisor, GPU perception, observability
+sink, in-depth security). Nothing here is implemented yet — opening an
+issue with the use case is the best way to bump one up the list.
 
 ## Conventions
 
@@ -136,3 +188,5 @@ Contributions welcome:
   start/stop bracket in `mission_with_recording.py`)
 - MapDock action (`autonomy/dock_map`) — dock via map coordinates rather
   than the local target tracker
+- The mini-projects in [mini-projects/IDEAS.md](mini-projects/IDEAS.md)
+  — none built yet, open to suggestions
