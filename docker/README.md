@@ -12,7 +12,7 @@ pre-built. Three roles:
 3. **A drop-in API client for offboard machines or the robot itself** —
    the image runs on Linux, macOS (Docker Desktop), or Windows (WSL2).
    Set `ROS_DOMAIN_ID` and pick an RMW (FastDDS / Cyclone / Zenoh) to
-   match the robot, and your scripts talk to OnAV as if you were on the
+   match the robot, and your scripts talk to OutdoorNav as if you were on the
    robot. Useful when:
    - your laptop is a different OS than the robot,
    - you don't want to install the overlay on the host you're using,

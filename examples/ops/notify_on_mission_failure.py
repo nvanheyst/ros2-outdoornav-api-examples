@@ -72,11 +72,11 @@ class FailureContext:
     image_topic: str
 
     def subject(self) -> str:
-        return f"OnAV: mission {self.status.lower()} (ns={self.namespace})"
+        return f"OutdoorNav: mission {self.status.lower()} (ns={self.namespace})"
 
     def short_text(self) -> str:
         loc = f" @ {self.lat:.5f},{self.lon:.5f}" if self.lat is not None else ""
-        return f"OnAV {self.namespace}: mission {self.status.lower()}{loc}. Check email."
+        return f"OutdoorNav {self.namespace}: mission {self.status.lower()}{loc}. Check email."
 
     def text_body(self) -> str:
         loc = (f"  position        : {self.lat:.6f}, {self.lon:.6f}\n"

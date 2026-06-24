@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Live --dry-run sweep against a running OnAV stack.
+# Live --dry-run sweep against a running OutdoorNav stack.
 # - Read-only examples: actually run.
 # - Mutating examples: invoked with --dry-run.
 # Use this to verify wiring (ROS env, namespace, IDs) before doing a real sweep.

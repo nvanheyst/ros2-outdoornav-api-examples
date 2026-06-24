@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Smoke test that does NOT require a live OnAV stack.
+# Smoke test that does NOT require a live OutdoorNav stack.
 # - Every example responds to --help without error.
 # - No script imports clearpath_outdoornav_api_lib (the audit hook).
 #
@@ -22,7 +22,7 @@ echo "  ok"
 # 2. Every example responds to --help.
 # If the ROS environment isn't sourced (no clearpath_* msgs / no rclpy) we
 # treat ModuleNotFoundError on those modules as 'skipped' rather than failure,
-# so the smoke can run on a dev machine without a full OnAV install.
+# so the smoke can run on a dev machine without a full OutdoorNav install.
 echo "==> --help on every example"
 fail=0; skip=0; pass=0
 while IFS= read -r script; do

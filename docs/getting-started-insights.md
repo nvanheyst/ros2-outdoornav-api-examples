@@ -114,7 +114,7 @@ the rich result (which waypoint failed, why), call
 returned. If the operator launched the mission from the web UI, your
 script can passively watch the action status topic (see
 `examples/ops/notify_on_mission_failure.py`) but won't get the result
-detail — that's a ROS 2 action semantics thing, not an OnAV one.
+detail — that's a ROS 2 action semantics thing, not an OutdoorNav one.
 
 ## Catch-all: when the docs and reality disagree
 

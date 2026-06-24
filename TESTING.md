@@ -6,7 +6,7 @@ failure and triage before moving on.
 
 ## Prerequisites
 
-1. OnAV stack up and reachable. From the OnAV web UI confirm:
+1. OutdoorNav stack up and reachable. From the OutdoorNav web UI confirm:
    - Robot publishes a stable `/localization/fix` (green status badge).
    - At least one map exists; note its UUID.
    - At least one mission exists; note its UUID.
@@ -27,7 +27,7 @@ failure and triage before moving on.
 
 | Command | Expected | Failure mode |
 |---|---|---|
-| `./examples/ops/service_inventory.py --grep mission_manager` | Lists at least `create_map`, `create_mission`, `create_waypoint`, `get_map`, `get_all_maps`, etc. | Empty output → wrong namespace or wrong DDS config; `autonomy/pause` only → you're talking to an OnAV release that doesn't expose `control_selection/pause`. |
+| `./examples/ops/service_inventory.py --grep mission_manager` | Lists at least `create_map`, `create_mission`, `create_waypoint`, `get_map`, `get_all_maps`, etc. | Empty output → wrong namespace or wrong DDS config; `autonomy/pause` only → you're talking to an OutdoorNav release that doesn't expose `control_selection/pause`. |
 | `./examples/ops/where_am_i.py` | Prints `lat,lon,alt` line on stdout, exit 0. | Timeout → robot doesn't have a fix. |
 
 ## Maps

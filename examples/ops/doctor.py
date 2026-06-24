@@ -213,7 +213,7 @@ class Doctor(Node):
 
 def render(snap: Snapshot, namespace: str, lifecycle_checked: bool) -> str:
     lines = []
-    lines.append(f"=== OnAV doctor: ns={namespace} ===\n")
+    lines.append(f"=== OutdoorNav doctor: ns={namespace} ===\n")
 
     lines.append("Environment")
     lines.append(f"  ROS_DOMAIN_ID    : {os.environ.get('ROS_DOMAIN_ID', '(unset)')}")

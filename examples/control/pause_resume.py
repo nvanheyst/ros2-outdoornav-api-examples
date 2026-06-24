@@ -6,7 +6,7 @@
   ./pause_resume.py --variant control_setbool   # legacy /control_selection/pause SetBool
   ./pause_resume.py --variant autonomy_trigger  # legacy /autonomy/pause Trigger
 
-Three service interfaces exist across OnAV releases — observed on
+Three service interfaces exist across OutdoorNav releases — observed on
 current OutdoorNav 2.3 stacks:
   autonomy_setbool (default):
     <ns>/autonomy/pause              (std_srvs/SetBool, data=true to pause)

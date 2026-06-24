@@ -8,7 +8,7 @@ process doing the cancelling must be the one that started the mission.
   ./cancel_mission.py --mission-uuid <u> --map-uuid <u> --after 10
   ONAV_MISSION_ID=<u> ONAV_MAP_ID=<u> ./cancel_mission.py --after 5
 
-If you need to stop a mission started elsewhere (e.g. from the OnAV UI)
+If you need to stop a mission started elsewhere (e.g. from the OutdoorNav UI)
 this pattern won't help — use `stop_autonomy.py` (Trigger) instead.
 
 Touches: action <namespace>/autonomy/mission

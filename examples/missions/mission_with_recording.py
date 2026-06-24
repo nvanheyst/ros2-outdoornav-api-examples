@@ -10,7 +10,7 @@ Sequence:
   2. /<ns>/autonomy/mission (ExecuteMission) — runs the mission
   3. /<ns>/log_manager/stop_recording (Trigger) — closes the log
 
-The recorded log shows up in the OnAV UI under the operator's log list.
+The recorded log shows up in the OutdoorNav UI under the operator's log list.
 Mission telemetry, fix, video, and any other auto-recorded channels are
 captured for the duration of step 1 → step 3.
 
