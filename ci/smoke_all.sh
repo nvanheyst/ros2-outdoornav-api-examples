@@ -29,7 +29,7 @@ while IFS= read -r script; do
     out=$(python3 "$script" --help 2>&1) && rc=0 || rc=$?
     if [ "$rc" -eq 0 ]; then
         echo "  ok:      $script"; pass=$((pass + 1))
-    elif echo "$out" | grep -qE "No module named '(rclpy|clearpath_|sensor_msgs|geometry_msgs|std_srvs|shapely|networkx|pyproj)"; then
+    elif echo "$out" | grep -qE "No module named '(rclpy|clearpath_|sensor_msgs|geometry_msgs|std_srvs|action_msgs|shapely|networkx|pyproj)"; then
         missing=$(echo "$out" | grep -oE "No module named '[^']+'" | head -1)
         echo "  skipped: $script  ($missing)"; skip=$((skip + 1))
     else

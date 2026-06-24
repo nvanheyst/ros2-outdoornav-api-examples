@@ -109,6 +109,7 @@ docker/        dev environment (ROS 2 Jazzy + clearpath overlay)
 | `ops/service_inventory.py` | ROS graph | List all services live on the graph; `--grep` filters. First stop when a wait-for-service hangs — paths and types differ across OnAV releases. |
 | `ops/delete_logs.py` | `logger/{get_all_logs, delete_log}` | Enumerate event logs and delete each. `--keep-recent`, `--dry-run` supported. `--keep-media` / `--keep-record` opt out of scorched earth. |
 | `ops/delete_all.py` | `mission_manager/{delete_all, get_all_maps, get_all_network_missions, get_all_points_of_interest}` | Wipe every map, mission, POI. Useful as cleanup after running these examples leaves test data littering the UI. `--dry-run` lists counts; `--confirm` actually fires. |
+| `ops/notify_on_mission_failure.py` | `autonomy/mission/_action/status`, `autonomy/status`, `localization/fix`, optional `sensors/camera_*/color/compressed` | Passive watcher: subscribe to the ExecuteMission action's status topic, ping a notifier when a goal aborts. Catches any abort regardless of who launched the mission. `--via stdout,email,webhook,sms` (comma-separated, configs via env vars). Email attaches the latest camera frame if `--camera-topic` is set; SMS is a one-line heads-up. |
 
 ## Conventions
 

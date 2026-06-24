@@ -78,6 +78,9 @@ failure and triage before moving on.
 | Delete entry but keep media | `./examples/ops/delete_logs.py --keep-media --keep-record --dry-run` then drop `--dry-run` | UI entries vanish, files stay on disk. | Same. |
 | Database wipe (dry) | `./examples/ops/delete_all.py --dry-run` | Prints `N maps, M missions, K POIs would be deleted`. | get_all_* hangs → mission_manager backend not responsive on this stack. |
 | Database wipe (live) | `./examples/ops/delete_all.py --confirm` | `OK` from delete_all; UI now empty. **Irreversible.** | Refused without `--confirm` — that's the safety. |
+| Notify watcher (dry) | `./examples/ops/notify_on_mission_failure.py --dry-run --via stdout,email,webhook,sms` | Prints the formatted body for every backend; no network. | Body missing fields → `FailureContext` dataclass out of sync with template. |
+| Notify watcher (live, stdout) | `./examples/ops/notify_on_mission_failure.py` then in another shell start and abort a mission (e.g. `./examples/control/cancel_mission.py --after 2`) | After the cancel, watcher prints nothing (cancels are silent by default). Re-run with `--also-on-cancel` to confirm; for a real abort, drop an e-stop or block the path. | No status seen → topic name mismatch; subscribed before any mission ran → expected. |
+| Notify watcher (live, email + sms) | `NOTIFY_SMTP_* … TWILIO_* … ./examples/ops/notify_on_mission_failure.py --via email,sms --camera-topic <ns>/sensors/camera_0/color/compressed` then trigger an abort | Email arrives with body + JPEG attachment; SMS arrives with one-line summary. | Email auth fail → SMTP creds / 2FA app password; SMS fail → Twilio creds / verified number. |
 | `where_am_i`, `service_inventory` | already exercised in **Live sanity** at the top. | — | — |
 
 ## What "failure" means here

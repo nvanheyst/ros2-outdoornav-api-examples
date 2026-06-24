@@ -43,6 +43,7 @@ if [ -n "${ONAV_MISSION_ID:-}" ] && [ -n "${ONAV_MAP_ID:-}" ]; then
 fi
 run "drive forward (dry)" python3 examples/control/drive_robot_forward.py --dry-run
 run "stop autonomy (dry)" python3 examples/control/stop_autonomy.py --dry-run
+run "notify watcher (dry)" python3 examples/ops/notify_on_mission_failure.py --dry-run --via stdout
 
 echo "PASS: $PASS  FAIL: $FAIL"
 [ "$FAIL" -eq 0 ]
