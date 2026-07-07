@@ -34,7 +34,8 @@ def make_parser(
         "--namespace",
         type=config.normalize_namespace,
         default=config.namespace(),
-        help=f"Robot namespace (default from $ONAV_NAMESPACE or '{config.namespace()}').",
+        help="Robot namespace (default $ONAV_NAMESPACE; if empty, load a profile "
+             "docker/*.env or let namespace-agnostic scripts auto-detect).",
     )
     parser.add_argument(
         "-v", "--verbose",

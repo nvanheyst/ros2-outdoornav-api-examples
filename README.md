@@ -58,6 +58,35 @@ export ONAV_MISSION_ID=<mission-uuid>
 export ONAV_POI_ID=<poi-uuid>
 ```
 
+### Sim vs real robot (transport profiles)
+
+The examples are namespace-agnostic (no baked-in serial) and work against both the
+onav-lab sim and a real robot — the difference is only the DDS transport. Pick a
+committed profile instead of memorising env vars:
+
+```bash
+docker compose --env-file sim.env      run --rm dev   # sim: CycloneDDS, domain 25
+docker compose --env-file real-amp.env run --rm dev   # real: FastDDS + discovery server, domain 0
+```
+
+|                | sim (`sim.env`)     | real amp (`real-amp.env`)                 |
+|----------------|---------------------|-------------------------------------------|
+| RMW            | `rmw_cyclonedds_cpp`| `rmw_fastrtps_cpp`                         |
+| Domain         | 25                  | 0                                         |
+| Discovery      | multicast           | Fast DDS Discovery Server `127.0.0.1:11811` (super-client) |
+| Namespace      | `/a300_00003`       | auto-detected (pin with `ONAV_NAMESPACE`) |
+
+Confirm the link first — this prints the transport, auto-detects the namespace, and
+shows live signals:
+
+```bash
+python3 examples/ops/connect_real_robot.py
+```
+
+Real robots run a discovery server on the robot's loopback, so run against a real robot
+**on the robot**. Off-robot needs a bridge (e.g. a Zenoh router); a Cloudflare TCP
+tunnel is not allowed (ToS).
+
 ### Sanity check
 
 ```bash
