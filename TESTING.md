@@ -50,7 +50,7 @@ failure and triage before moving on.
 | Traverse entire map via gotos | `./examples/missions/traverse_entire_map_gotos.py` | Prints naive vs greedy length, then ExecuteGoTo per node. | "no points on map" → bad map id; "still waiting" loop → action server down. |
 | Schedule a mission | `./examples/missions/schedule_mission.py +30s` | Countdown, then mission fires at T0. | "target time is in the past" → date parsing issue; permission denied → namespace. |
 | Battery loop | `./examples/missions/loop_mission_battery_aware.py --threshold 30 --loops 2` | Two loop iterations (assuming battery > 30%). | Battery never drops — fine; mission rejected at each loop — autonomy state. |
-| Record path | `./examples/missions/record_path.py smoke_recorded --min-distance 1.0` | Subscribes to fix, prints "N points…" every 10 samples. Ctrl-C → "captured N raw points → simplified to M → map smoke_recorded created". | No points accumulate → no fix; `create_map` errors → map service. |
+| Record path | `./examples/maps/record_path.py smoke_recorded --min-distance 1.0` | Subscribes to fix, prints "N points…" every 10 samples. Ctrl-C → "captured N raw points → simplified to M → map smoke_recorded created". | No points accumulate → no fix; `create_map` errors → map service. |
 | Mission with recording (plumbing) | `./examples/missions/mission_with_recording.py --skip-mission` | start_recording OK → 5 s sleep → stop_recording OK. New log shows up in the UI. | "service not available" → run `service_inventory.py --grep log_manager`; if your stack uses `StartRecording`/`StopRecording` (not Trigger), swap the import. |
 | Mission with recording (full run) | `./examples/missions/mission_with_recording.py` | start_recording → ExecuteMission runs to completion → stop_recording. UI shows a single bracketed log. | "Goal rejected" → autonomy busy; stop_recording still fires in the finally block. |
 
@@ -98,8 +98,8 @@ failure and triage before moving on.
 
 | Step | Command | Expected | Failure mode |
 |---|---|---|---|
-| Recover from abort (dry) | `./examples/missions/recover_from_abort.py --dry-run` | Lists the action paths and retry params without firing anything. | None expected. |
-| Recover from abort (live, no failure) | `./examples/missions/recover_from_abort.py --max-retries 2` | Runs ExecuteMission, hits SUCCEEDED, logs "mission succeeded after 1 attempt(s)" and exits. | If autonomy is busy → goal rejected on first attempt; check stack state. |
+| Recover from abort (dry) | `./examples/ops/recover_from_abort.py --dry-run` | Lists the action paths and retry params without firing anything. | None expected. |
+| Recover from abort (live, no failure) | `./examples/ops/recover_from_abort.py --max-retries 2` | Runs ExecuteMission, hits SUCCEEDED, logs "mission succeeded after 1 attempt(s)" and exits. | If autonomy is busy → goal rejected on first attempt; check stack state. |
 | Recover from abort (live, induced failure) | Same command, then drop an obstacle in the path so the first attempt aborts | After abort: rich detail printed (code, goal_states), `--backoff` sleep, then ExecuteMissionFromGoal from the last in-flight waypoint. Up to `--max-retries` retries. | Robot can't replan → exhausts retries; that's the intended terminal behaviour. |
 
 ## What "failure" means here
