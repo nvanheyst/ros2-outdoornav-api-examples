@@ -4,14 +4,14 @@ services:
     # :latest; CI overwrites it on every push. pull_policy: missing means
     # Compose pulls the public image when it isn't already local, instead of
     # building from the Dockerfile below.
-    image: ghcr.io/nvanheyst/onav-api-examples:latest
+    image: ghcr.io/nvh-cpr/onav-lab-dev:latest
     pull_policy: missing
     # The build section is only for iterating on the Dockerfile itself
     # (`docker compose build`). Normal use pulls the public image above.
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: onav-api-examples-dev
+    container_name: onav-lab-dev
     network_mode: host
     # RMW + DDS config are intentionally not hardcoded. Defaults to FastDDS
     # (matches OutdoorNav and the ROS 2 Jazzy default). Override via .env if
@@ -22,6 +22,11 @@ services:
       - CYCLONEDDS_URI=${CYCLONEDDS_URI:-}
       - FASTRTPS_DEFAULT_PROFILES_FILE=${FASTRTPS_DEFAULT_PROFILES_FILE:-}
       - ZENOH_CONFIG_OVERRIDE=${ZENOH_CONFIG_OVERRIDE:-}
+      # Fast DDS discovery server (real robots put the graph behind one on
+      # loopback). Empty unless an env-file sets them, so the sim/default path
+      # stays on simple discovery. See real-amp.env.
+      - ROS_DISCOVERY_SERVER=${ROS_DISCOVERY_SERVER:-}
+      - ROS_SUPER_CLIENT=${ROS_SUPER_CLIENT:-}
       # Robot namespace the scripts read (see common/config.py). Keeps the
       # /a300_00003 fallback when unset. Per-mission UUIDs are passed per call,
       # not here.

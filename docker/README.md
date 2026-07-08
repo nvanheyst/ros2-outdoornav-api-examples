@@ -19,7 +19,7 @@ pre-built. Three roles:
    - the robot's onboard compute is busy and you want a thin client
      elsewhere on the same network.
 
-The image is published to GHCR as `ghcr.io/nvanheyst/onav-api-examples:latest`.
+The image is published to GHCR as `ghcr.io/nvh-cpr/onav-lab-dev:latest`.
 `latest` is only published from `main`. PR builds publish temporary
 `pr-<number>` tags.
 
@@ -71,6 +71,33 @@ If your robot uses a non-default ROS domain, set `ROS_DOMAIN_ID` in `.env`
 same file to point every script at your robot (default `/a300_00003`); the
 value is normalized, so `a300_00003`, `/a300_00003`, and `/a300_00003/` all
 work.
+
+## Connecting to a real robot
+
+A real OutdoorNav robot puts its ROS graph behind a **Fast DDS discovery server**
+on loopback (not multicast), so **run the container on the robot itself**. Use the
+`real-amp.env` profile — it sets the discovery server, super-client (needed to
+enumerate the graph), the per-robot domain, and a UDP-only Fast DDS profile:
+
+```bash
+docker compose --env-file real-amp.env run --rm dev
+# inside the container:
+ros2 topic list                                                # full graph
+ros2 topic echo sensors/lidar2d_0/scan --qos-reliability best_effort   # 2D, best_effort
+ros2 topic echo sensors/lidar3d_0/pointcloud                   # 3D, default (reliable)
+```
+
+Set `ROS_DOMAIN_ID` in `real-amp.env` to your robot (read `system.ros2.domain_id`
+from `/etc/clearpath/robot.yaml`).
+
+QoS is per-topic — match the publisher (`ros2 topic info -v <topic>`): the 2D scan
+is BEST_EFFORT (pass `--qos-reliability best_effort`), the 3D pointcloud is RELIABLE
+(use the default reader). `real-amp.env` also points
+`FASTRTPS_DEFAULT_PROFILES_FILE` at `docker/fastdds_udp_only.xml`: the container
+can't share the host's Fast DDS shared-memory segments, so without UDP-only
+transport large messages (pointclouds, images) never arrive while small ones do —
+see that file's header. Off-robot clients can't reach the loopback discovery server
+directly; bridge in with a Zenoh router.
 
 ## Shell
 

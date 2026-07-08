@@ -65,7 +65,7 @@ vs Cyclone vs Zenoh.
 ## The docker container has three roles
 
 `docker/` in this repo is not just for CI. The image
-(`ghcr.io/nvanheyst/onav-api-examples:latest`) is the easiest path to
+(`ghcr.io/nvh-cpr/onav-lab-dev:latest`) is the easiest path to
 a working API environment:
 
 1. **Run the smoke and live-dryrun in CI** — what it does on GitHub.

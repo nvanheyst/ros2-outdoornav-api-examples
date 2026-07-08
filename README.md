@@ -5,7 +5,8 @@ while ramping up on Clearpath's OutdoorNav API. The official API reference,
 message definitions, and supported examples live in the upstream
 [clearpath_outdoornav](https://github.com/clearpathrobotics/clearpath_outdoornav)
 repo — start there. This repo is the stuff I wished I'd had in my first
-month: a working dev container and a few patterns the docs don't cover.
+month: a general-purpose ROS 2 dev container — useful on its own — and a
+few patterns the docs don't cover.
 
 Pure Python, single-file examples. Each script uses raw `rclpy` plus the
 `clearpath_*` message packages — no SDK wrappers — so the service / topic
@@ -20,6 +21,7 @@ first, then try a couple of examples to get connected and reporting:
 
 - [examples/ops/where_am_i.py](examples/ops/where_am_i.py) — confirm you can talk to the robot and read its GPS fix.
 - [examples/ops/doctor.py](examples/ops/doctor.py) — one-call snapshot of autonomy state, battery, and topic liveness.
+- [examples/ops/preflight.py](examples/ops/preflight.py) — go/no-go readiness gate before you send a mission.
 
 ## Quick start
 
@@ -108,65 +110,26 @@ examples/
 patterns/       small reusable recipes (graceful shutdown, runtime params)
 mini-projects/  ideas for larger end-to-end examples (not built yet)
 ci/             offline smoke + live dry-run harnesses
-docker/         dev environment + drop-in API client for any OS
+docker/         general-purpose ROS 2 dev container — its own project; the examples just use it
 ```
 
-For each table below, upstream's
-[clearpath_outdoornav](https://github.com/clearpathrobotics/clearpath_outdoornav)
-repo and the official docs are the authoritative reference for the API
-surface listed. The descriptions here are how I think about them while
-writing scripts.
+Upstream's [clearpath_outdoornav](https://github.com/clearpathrobotics/clearpath_outdoornav)
+repo and the official docs are the authoritative reference for the API surface each
+example uses; the folder READMEs below are how I think about them while writing scripts.
 
-## Examples — index
+## Examples
 
-### maps
+Grouped by folder — each has its own README with the full table:
 
-| File | API surface | What it does |
-|---|---|---|
-| `maps/load_map_from_file.py` | `mission_manager/create_map` | JSON → CreateMap. Tolerates missing point ids. |
-| `maps/row_generator_square.py` | `mission_manager/create_map` | Boustrophedon over a centre + w/h + bearing rectangle. **One-way** edges (chain). All geometry from CLI args — repeating requires retyping. |
-| `maps/row_generator_polygon.py` | `mission_manager/{get_all_points_of_interest, get_all_maps, delete_map, create_map}` | Boustrophedon inside a polygon defined by tagged POIs, with the polygon perimeter included as a border. **Two-way** edges (graph). POI-driven means you can move the vertices in the UI and re-run. Still one-shot though, not reactive. `--replace` overwrites an existing map of the same name. |
-| `maps/bulk_edit_edges.py` | `mission_manager/{get_map, clone_map, update_map_edges}`, `localization/fix` | Bulk edit edge speed limit (slow zone) and/or path radius inside a centre+radius zone. `--around-me` uses the robot's current fix as the centre. Optional `--clone`. |
+- **[examples/maps/](examples/maps/README.md)** — create, load, and edit maps (incl. `row_generator_from_here.py`: a zero-arg coverage field at the robot's current position + heading).
+- **[examples/missions/](examples/missions/README.md)** — build, schedule, loop, and traverse missions.
+- **[examples/control/](examples/control/README.md)** — teleop, pause/resume, stop, dock.
+- **[examples/ops/](examples/ops/README.md)** — readiness, diagnostics, cleanup, notifications.
 
-### missions
+Two good first runs against a real robot:
 
-| File | API surface | What it does |
-|---|---|---|
-| `missions/generate_traversal_mission.py` | `mission_manager/{get_map, create_mission, create_waypoint}`, optional `autonomy/mission` | **Persistent**, edge-following traversal. Builds a NetworkMission + Waypoints in the database so you can re-run it from the UI. Sequential for chain maps, least-turn graph walk for mesh. Robot follows map edges. Optional `--run`. |
-| `missions/traverse_entire_map_gotos.py` | `mission_manager/get_map`, `autonomy/goto` | **Ephemeral**, free-GPS traversal. Fires one ExecuteGoTo per node in greedy nearest-neighbour order from the current fix. No mission stored. Robot picks its own path between nodes — ignores edges. |
-| `missions/random_visit_mission.py` | `mission_manager/get_map`, `autonomy/goto` | Random GoTo goals inside the map bbox. Soak test. |
-| `missions/loop_mission_battery_aware.py` | `autonomy/mission`, `platform/bms/state` | Loop a mission until battery drops below threshold. |
-| `missions/schedule_mission.py` | `autonomy/mission` | Wait until a wall-clock target (ISO 8601 or `+30s/+5m`) then fire ExecuteMission. |
-| `missions/record_path.py` | `localization/fix`, `mission_manager/create_map` | Subscribe to fix while the operator drives, simplify with Douglas-Peucker on Ctrl-C, optionally push as a map. |
-| `missions/mission_with_recording.py` | `log_manager/{start_recording, stop_recording}`, `autonomy/mission` | Bracket an ExecuteMission call with start_recording / stop_recording so the run shows up as a single log in the UI. |
-
-### control
-
-| File | API surface | What it does |
-|---|---|---|
-| `control/drive_robot_forward.py` | `ui_teleop/cmd_vel` | Publish TwistStamped for N metres at M m/s. Open-loop. |
-| `control/pause_resume.py` | `autonomy/{pause,resume}` (SetBool — default) **or** `control_selection/{pause,resume}` (SetBool) **or** `autonomy/{pause,resume}` (Trigger) | Minimal pause→hold→resume. Three release variants supported via `--variant`. Run `service_inventory.py | grep -E 'pause\|resume'` first to confirm path + type. |
-| `control/pause_and_teleop.py` | `autonomy/{pause,resume}` (SetBool), `autonomy/goto_poi`, `ui_teleop/cmd_vel`, `autonomy/stop` | Drive to a POI, pause mid-route, teleop a turn + drive, resume, wait for completion. |
-| `control/stop_autonomy.py` | `autonomy/stop` | Hard-stop the autonomy stack (Trigger). |
-| `control/cancel_mission.py` | `autonomy/mission` | Start a mission from this process, sleep `--after` seconds, then cancel via the goal handle. Demonstrates the action-cancel pattern. To stop a mission started elsewhere, use `stop_autonomy.py`. |
-| `control/dock_workflow.py` | `docking/dock_localizer/add_dock_current_pose`, `docking/dock_manager/delete_dock`, `ui_teleop/cmd_vel`, `autonomy/{dock_local, undock}` | Add a dock at the robot's current pose, back up, dock, hold, undock, clean up. End-to-end docking demo. |
-
-### ops
-
-| File | API surface | What it does |
-|---|---|---|
-| `ops/where_am_i.py` | `localization/fix` | Print the latest GPS fix and exit. |
-| `ops/service_inventory.py` | ROS graph | List all services live on the graph; `--grep` filters. First stop when a wait-for-service hangs — paths and types differ across OutdoorNav releases. |
-| `ops/delete_logs.py` | `logger/{get_all_logs, delete_log}` | Enumerate event logs and delete each. `--keep-recent`, `--dry-run` supported. `--keep-media` / `--keep-record` opt out of scorched earth. |
-| `ops/delete_all.py` | `mission_manager/{delete_all, get_all_maps, get_all_network_missions, get_all_points_of_interest}` | Wipe every map, mission, POI. Useful as cleanup after running these examples leaves test data littering the UI. `--dry-run` lists counts; `--confirm` actually fires. |
-| `ops/notify_on_mission_failure.py` | `autonomy/mission/_action/status`, `autonomy/status`, `localization/fix`, optional `sensors/camera_*/color/compressed` | Passive watcher: subscribe to the ExecuteMission action's status topic, ping a notifier when a goal aborts. Catches any abort regardless of who launched the mission. `--via stdout,email,webhook,sms` (comma-separated, configs via env vars). Email attaches the latest camera frame if `--camera-topic` is set; SMS is a one-line heads-up. |
-| `ops/doctor.py` | `autonomy/status`, `localization/fix`, `platform/bms/state`, `autonomy/mission/_action/status`, optional `<lifecycle_node>/get_state` | One-call diagnostic snapshot: env, autonomy state, battery, GPS fix age, last mission status, key topic liveness, and (with `--include-lifecycle`) every managed-node state. Replaces the "run a half-dozen tools to figure out what's up" scavenger hunt. |
-
-### missions (cont.)
-
-| File | API surface | What it does |
-|---|---|---|
-| `missions/recover_from_abort.py` | `autonomy/mission`, `autonomy/mission_from_goal`, `navigation/current_goal_id` | Run ExecuteMission. On abort, retry from the last in-flight waypoint via ExecuteMissionFromGoal, up to `--max-retries` times. Logs the rich abort detail (code, message, per-waypoint goal_states) before each retry. |
+- **[examples/ops/preflight.py](examples/ops/preflight.py)** — go/no-go: is autonomy actually ready (missions, docking, collision detection, e-stop, battery)? Read-only.
+- **[examples/maps/row_generator_from_here.py](examples/maps/row_generator_from_here.py)** — drop a coverage field where the robot is standing, no coordinates to type.
 
 ### patterns
 
