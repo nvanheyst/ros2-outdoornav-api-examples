@@ -1,4 +1,4 @@
-# missions/ — build, schedule, loop, and traverse missions
+# missions/ - build, schedule, loop, and traverse missions
 
 Standalone `rclpy` examples for turning maps into missions and running them. Dev
 container + connection setup are in the [top-level README](../../README.md).

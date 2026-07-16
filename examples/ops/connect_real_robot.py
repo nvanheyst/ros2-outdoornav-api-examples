@@ -17,7 +17,7 @@ or export the vars yourself (what real-amp.env sets):
     ROS_DISCOVERY_SERVER=127.0.0.1:11811 ROS_SUPER_CLIENT=TRUE \
     ./connect_real_robot.py
 
-Run it ON the robot — the discovery server is on the robot's loopback. Off-robot
+Run it ON the robot - the discovery server is on the robot's loopback. Off-robot
 only works if the graph is bridged to you (e.g. a Zenoh router). See docker/real-amp.env.
 
 Touches: graph introspection only (read-only).
@@ -33,8 +33,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 import rclpy
 from rclpy.node import Node
 
-from common.argparse_base import make_parser
-from common import config
+from examples.common.argparse_base import make_parser
+from examples.common import config
 
 _ENV_KEYS = [
     "RMW_IMPLEMENTATION", "ROS_DOMAIN_ID", "ROS_DISCOVERY_SERVER",
@@ -71,7 +71,7 @@ def main(argv=None):
 
         if not ns:
             node.get_logger().error(
-                "no robot namespace discovered — check the transport/profile, and that "
+                "no robot namespace discovered - check the transport/profile, and that "
                 "you're on the robot (or bridged). See docker/real-amp.env.")
             return 1
 

@@ -5,7 +5,7 @@
   ./random_visit_mission.py --count 0 --seed 42        # infinite, deterministic
   ONAV_MAP_ID=<uuid> ./random_visit_mission.py
 
-Uses ExecuteGoTo (free GPS pose), not GoToPOI — targets are random points in
+Uses ExecuteGoTo (free GPS pose), not GoToPOI - targets are random points in
 the map bbox; autonomy rejects whatever it can't reach.
 
 Touches:
@@ -29,9 +29,9 @@ from clearpath_mission_manager_msgs.srv import GetMap
 from clearpath_navigation_msgs.msg import Waypoint
 from clearpath_navigation_msgs.action import ExecuteGoTo
 
-from common.argparse_base import make_parser
-from common.config import map_id as default_map_id
-from common.ros_helpers import wait_for_service, wait_for_action, call_service
+from examples.common.argparse_base import make_parser
+from examples.common.config import map_id as default_map_id
+from examples.common.ros_helpers import wait_for_service, wait_for_action, call_service
 
 
 POSITION_TOLERANCE_M = 1.0
@@ -130,7 +130,7 @@ class RandomVisit(Node):
                 f"GoTo ({lat:.6f}, {lon:.6f}) hdg {math.degrees(heading):+.0f}°"
             )
             ok = self.go_to(lat, lon, heading)
-            self.get_logger().info(f"  {'OK' if ok else 'FAILED — continuing'}")
+            self.get_logger().info(f"  {'OK' if ok else 'FAILED - continuing'}")
 
 
 def main(argv=None):

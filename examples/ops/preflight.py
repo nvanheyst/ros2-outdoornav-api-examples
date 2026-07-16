@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Go / no-go readiness gate — will autonomy actually run right now?
+"""Go / no-go readiness gate - will autonomy actually run right now?
 
 Checks the things that STOP normal operation (missions, docking, collision
 avoidance) and prints one verdict: READY or NOT READY + the blockers. Read-only:
-subscribes, introspects, and probes action servers with wait_for_server — never
+subscribes, introspects, and probes action servers with wait_for_server - never
 sends a goal or command, so it's safe to run anytime (typically stationary at the
 dock before a mission).
 
 Philosophy: fail only on functional blockers, not warning noise. The system's own
 top-level diagnostic being ERROR is the same gate OutdoorNav uses to reject
-missions — that's a BLOCK. Diagnostics at WARN (PTP jitter, memory usage, etc.)
+missions - that's a BLOCK. Diagnostics at WARN (PTP jitter, memory usage, etc.)
 and other non-fatal conditions are shown as notes, never a failure.
 
   ./preflight.py
@@ -49,7 +49,7 @@ from clearpath_navigation_msgs.action import ExecuteMission
 from clearpath_dock_msgs.action import MapDock
 from clearpath_dock_msgs.msg import DockDatabase
 
-from common.argparse_base import make_parser
+from examples.common.argparse_base import make_parser
 
 # Check severities.
 OK, BLOCK, NOTE = "OK", "BLOCK", "NOTE"
@@ -192,31 +192,31 @@ def run_checks(node: Preflight, battery_critical: float, battery_warn: float):
     checks = []
     nodes = node.node_base_names()
 
-    # 1. System gate — the same signal OutdoorNav uses to accept/reject missions.
+    # 1. System gate - the same signal OutdoorNav uses to accept/reject missions.
     if node.toplevel_level is None:
-        checks.append((BLOCK, "system health", "no diagnostics_toplevel_state — is the stack up?"))
+        checks.append((BLOCK, "system health", "no diagnostics_toplevel_state - is the stack up?"))
     elif node.toplevel_level >= 2:
         who = ", ".join(node.agg_error[:6]) or "unknown component"
-        checks.append((BLOCK, "system health", f"top-level ERROR — blockers: {who}"))
+        checks.append((BLOCK, "system health", f"top-level ERROR - blockers: {who}"))
     else:
         note = " (WARN present, non-blocking)" if node.toplevel_level == 1 else ""
         checks.append((OK, "system health", f"top-level {'WARN' if node.toplevel_level==1 else 'OK'}{note}"))
     if node.agg_warn:
         checks.append((NOTE, "diagnostics warnings", f"{len(node.agg_warn)}: " + ", ".join(node.agg_warn[:5])))
 
-    # 2. Localization — fix + map->base_link tf.
+    # 2. Localization - fix + map->base_link tf.
     if node.fix is None:
         checks.append((BLOCK, "localization", "no GPS fix on localization/fix"))
     elif not node.have_tf():
         checks.append((BLOCK, "localization", f"no {node.map_frame}->{node.base_frame} tf"))
     else:
         # NavSatFix.status is driver-specific here (fixposition uses non-standard
-        # values), so don't judge fix quality from it — a valid lat/lon is the
+        # values), so don't judge fix quality from it - a valid lat/lon is the
         # functional signal for readiness.
         checks.append((OK, "localization",
                        f"fix {node.fix.latitude:.6f},{node.fix.longitude:.6f}, tf present"))
 
-    # 3. Collision detection — enabled AND actually fed.
+    # 3. Collision detection - enabled AND actually fed.
     if "collision_monitor" not in nodes:
         checks.append((BLOCK, "collision detection", "collision_monitor node not running"))
     else:
@@ -225,13 +225,13 @@ def run_checks(node: Preflight, battery_critical: float, battery_warn: float):
             checks.append((BLOCK, "collision detection", "PolygonStop disabled"))
         elif node.collision_source_count == 0:
             checks.append((BLOCK, "collision detection",
-                           "enabled but source cloud (nonground_filtered) not publishing — monitor is blind"))
+                           "enabled but source cloud (nonground_filtered) not publishing - monitor is blind"))
         else:
             en = "enabled" if enabled else "enabled(?)"
             checks.append((OK, "collision detection",
                            f"{en}, source live ({node.collision_source_count} clouds)"))
 
-    # 4. Docking — the functional signal is the dock action server. The docking
+    # 4. Docking - the functional signal is the dock action server. The docking
     # nodes are composed under one 'docking' process, so don't rely on individual
     # node names.
     if not node.action_server_up(MapDock, "autonomy/dock_map"):
@@ -252,9 +252,9 @@ def run_checks(node: Preflight, battery_critical: float, battery_warn: float):
     if node.battery_pct is None:
         checks.append((NOTE, "battery", "no reading on platform/bms/state"))
     elif node.battery_pct < battery_critical:
-        checks.append((BLOCK, "battery", f"{node.battery_pct:.0f}% — critically low"))
+        checks.append((BLOCK, "battery", f"{node.battery_pct:.0f}% - critically low"))
     elif node.battery_pct < battery_warn:
-        checks.append((NOTE, "battery", f"{node.battery_pct:.0f}% — consider charging before a long mission"))
+        checks.append((NOTE, "battery", f"{node.battery_pct:.0f}% - consider charging before a long mission"))
     else:
         checks.append((OK, "battery", f"{node.battery_pct:.0f}%"))
 
@@ -279,7 +279,7 @@ def render(checks, ns: str) -> tuple[str, bool]:
     if ready:
         lines.append("VERDICT: READY")
     else:
-        lines.append("VERDICT: NOT READY — " + "; ".join(f"{l}: {d}" for s, l, d in blocks))
+        lines.append("VERDICT: NOT READY - " + "; ".join(f"{l}: {d}" for s, l, d in blocks))
     return "\n".join(lines), ready
 
 
@@ -296,7 +296,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     if not args.namespace:
-        print("error: no namespace — set ONAV_NAMESPACE (docker/*.env) or pass --namespace",
+        print("error: no namespace - set ONAV_NAMESPACE (docker/*.env) or pass --namespace",
               file=sys.stderr)
         return 2
 

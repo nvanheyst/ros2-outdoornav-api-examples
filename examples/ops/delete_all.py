@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Wipe every map, mission, and POI from the OutdoorNav database.
 
-Useful as cleanup after running these API examples — they accumulate
+Useful as cleanup after running these API examples - they accumulate
 test maps, missions, and POIs that clutter the UI. One service call
 nukes them all.
 
@@ -12,7 +12,7 @@ nukes them all.
 Safety: the underlying service request carries a
 `yes_i_am_absolutely_sure_i_want_to_do_this` bool. This script only
 sets it when you pass `--confirm`. Does NOT delete docks (separate
-database — see `<ns>/docking/dock_manager/clear_data`).
+database - see `<ns>/docking/dock_manager/clear_data`).
 
 Touches:
   service <namespace>/mission_manager/delete_all                     (DeleteEverything)
@@ -33,8 +33,8 @@ from clearpath_mission_manager_msgs.srv import (
     DeleteEverything, GetAllMaps, GetAllNetworkMissions, GetAllPointsOfInterest,
 )
 
-from common.argparse_base import make_parser
-from common.ros_helpers import wait_for_service, call_service
+from examples.common.argparse_base import make_parser
+from examples.common.ros_helpers import wait_for_service, call_service
 
 
 class DeleteAll(Node):
@@ -73,7 +73,7 @@ class DeleteAll(Node):
         req.yes_i_am_absolutely_sure_i_want_to_do_this = True
         resp = call_service(self, self.delete_client, req)
         ok = bool(resp and getattr(resp, "ok", False))
-        self.get_logger().info(f"delete_all: {'OK — database wiped' if ok else 'FAILED'}")
+        self.get_logger().info(f"delete_all: {'OK - database wiped' if ok else 'FAILED'}")
         return ok
 
 
@@ -84,7 +84,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     if not args.dry_run and not args.confirm:
-        parser.error("refusing — pass --dry-run for counts or --confirm to actually wipe")
+        parser.error("refusing - pass --dry-run for counts or --confirm to actually wipe")
 
     rclpy.init()
     node = DeleteAll(args.namespace)

@@ -1,6 +1,6 @@
 """rclpy boilerplate shared across examples.
 
-Stays at the rclpy level — these helpers never wrap an OutdoorNav interface.
+Stays at the rclpy level - these helpers never wrap an OutdoorNav interface.
 Reading any example, every service / topic / action name is still visible at
 the call site.
 """

@@ -9,7 +9,7 @@ process doing the cancelling must be the one that started the mission.
   ONAV_MISSION_ID=<u> ONAV_MAP_ID=<u> ./cancel_mission.py --after 5
 
 If you need to stop a mission started elsewhere (e.g. from the OutdoorNav UI)
-this pattern won't help — use `stop_autonomy.py` (Trigger) instead.
+this pattern won't help - use `stop_autonomy.py` (Trigger) instead.
 
 Touches: action <namespace>/autonomy/mission
          (ExecuteMission send_goal_async + goal_handle.cancel_goal_async).
@@ -27,9 +27,9 @@ from rclpy.node import Node
 from rclpy.action import ActionClient
 from clearpath_navigation_msgs.action import ExecuteMission
 
-from common.argparse_base import make_parser
-from common.config import map_id as default_map_id, mission_id as default_mission_id
-from common.ros_helpers import wait_for_action
+from examples.common.argparse_base import make_parser
+from examples.common.config import map_id as default_map_id, mission_id as default_mission_id
+from examples.common.ros_helpers import wait_for_action
 
 
 class CancelMission(Node):
@@ -52,7 +52,7 @@ class CancelMission(Node):
         if not self._goal_handle or not self._goal_handle.accepted:
             self.get_logger().error("ExecuteMission goal rejected")
             return False
-        self.get_logger().info("mission accepted — robot should be moving")
+        self.get_logger().info("mission accepted - robot should be moving")
         return True
 
     def sleep_with_spin(self, seconds: float) -> None:

@@ -15,10 +15,10 @@ How it works:
   4. Cancelled by operator (e.g. Ctrl-C, web UI stop) → exits without retry.
 
 Notes:
-  - "Recover from last in-flight waypoint" — retrying *that* waypoint is the
+  - "Recover from last in-flight waypoint" - retrying *that* waypoint is the
     safe default. If the platform aborted because of a collision near goal N,
     you usually want to re-attempt N (path planner picks a new route).
-  - `run_on_start_tasks=False` on the resume call — start-of-mission tasks
+  - `run_on_start_tasks=False` on the resume call - start-of-mission tasks
     only fire on the first attempt.
   - This script started the mission, so it can collect the rich
     `ExecuteMission.Result` (goal_states, error_code/msg). Logged on abort
@@ -45,9 +45,9 @@ from std_msgs.msg import String
 from clearpath_navigation_msgs.action import ExecuteMission, ExecuteMissionFromGoal
 from clearpath_navigation_msgs.msg import MapGoalState
 
-from common.argparse_base import make_parser
-from common.config import map_id as default_map_id, mission_id as default_mission_id
-from common.ros_helpers import wait_for_action
+from examples.common.argparse_base import make_parser
+from examples.common.config import map_id as default_map_id, mission_id as default_mission_id
+from examples.common.ros_helpers import wait_for_action
 
 
 STATE_NAMES = {
@@ -139,10 +139,10 @@ class RecoverFromAbort(Node):
                 self.get_logger().info(f"mission succeeded after {attempt + 1} attempt(s)")
                 return True
             if status == GoalStatus.STATUS_CANCELED:
-                self.get_logger().warn("mission cancelled by operator — no retry")
+                self.get_logger().warn("mission cancelled by operator - no retry")
                 return False
             if status != GoalStatus.STATUS_ABORTED:
-                self.get_logger().warn(f"unexpected status {status} — stopping")
+                self.get_logger().warn(f"unexpected status {status} - stopping")
                 return False
 
             self.get_logger().error(f"mission ABORTED on attempt {attempt + 1}")
@@ -150,12 +150,12 @@ class RecoverFromAbort(Node):
                 self._log_abort_detail(result)
 
             if attempt >= max_retries:
-                self.get_logger().error(f"exhausted {max_retries} retries — giving up")
+                self.get_logger().error(f"exhausted {max_retries} retries - giving up")
                 return False
 
             resume_from = self._current_goal_id
             if not resume_from:
-                self.get_logger().error("no current_goal_id seen — can't resume")
+                self.get_logger().error("no current_goal_id seen - can't resume")
                 return False
 
             self.get_logger().info(f"sleeping {backoff_sec:.1f}s before retry")
@@ -164,7 +164,7 @@ class RecoverFromAbort(Node):
             self.get_logger().info(f"resuming from goal {resume_from[:8]} (attempt {attempt + 1})")
             handle = self._send_resume(resume_from)
             if not handle or not handle.accepted:
-                self.get_logger().error("ExecuteMissionFromGoal rejected — giving up")
+                self.get_logger().error("ExecuteMissionFromGoal rejected - giving up")
                 return False
 
 

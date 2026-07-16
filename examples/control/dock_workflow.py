@@ -8,7 +8,7 @@ Sequence:
   1. AddDockCurrentPose stores a dock at the robot's current pose.
   2. Back the robot up `--backup-distance` metres at `--backup-velocity`.
   3. Dock action drives the robot onto the just-stored dock (local target
-     tracker — needs the dock visible to the sensor).
+     tracker - needs the dock visible to the sensor).
   4. Hold `--hold` seconds (simulating charging).
   5. Undock action drives the robot off the dock.
   6. RemoveDock cleans up the entry (unless --keep-dock).
@@ -18,7 +18,7 @@ The dock template name is robot-specific (e.g. `default_dock`,
 `docking/dock_localizer/get_dock_database`.
 
 Run `service_inventory.py --grep dock` first to confirm your stack
-exposes these paths — they live under `<ns>/docking/` and
+exposes these paths - they live under `<ns>/docking/` and
 `<ns>/autonomy/`, not `<ns>/mission_manager/`.
 
 Touches:
@@ -43,8 +43,8 @@ from geometry_msgs.msg import Twist, TwistStamped
 from clearpath_dock_msgs.srv import AddDockCurrentPose, RemoveDock
 from clearpath_dock_msgs.action import Dock, Undock
 
-from common.argparse_base import make_parser
-from common.ros_helpers import wait_for_service, wait_for_action, call_service
+from examples.common.argparse_base import make_parser
+from examples.common.ros_helpers import wait_for_service, wait_for_action, call_service
 
 
 PUBLISH_HZ = 20.0
@@ -81,7 +81,7 @@ class DockWorkflow(Node):
         resp = call_service(self, self.add_client, req)
         ok = bool(resp and resp.success)
         msg = getattr(resp, "message", "") or "(no message)"
-        self.get_logger().info(f"AddDockCurrentPose({self.dock_name!r}): {'OK' if ok else 'FAILED'} — {msg}")
+        self.get_logger().info(f"AddDockCurrentPose({self.dock_name!r}): {'OK' if ok else 'FAILED'} - {msg}")
         return ok
 
     def remove_dock(self) -> bool:

@@ -2,7 +2,7 @@
 """List the OutdoorNav services live on the current ROS graph.
 
 Thin wrapper around `Node.get_service_names_and_types()`. Run this
-when a wait-for-service hangs — before assuming a service is missing,
+when a wait-for-service hangs - before assuming a service is missing,
 confirm what the graph actually advertises. Paths AND types differ
 across OutdoorNav releases (e.g. `<ns>/autonomy/pause` is `SetBool` on 2.3
 but was `Trigger` in older releases). A `--grep pause` against the
@@ -25,7 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 import rclpy
 from rclpy.node import Node
 
-from common.argparse_base import make_parser
+from examples.common.argparse_base import make_parser
 
 
 def main(argv=None):

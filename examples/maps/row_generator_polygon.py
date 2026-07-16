@@ -11,7 +11,7 @@ can re-enter the field at any side. Compare with
 `row_generator_square.py`: that one takes geometry from CLI flags
 (one-shot, one-way chain edges); this one reads polygon vertices from
 the POI database, so you can drag POIs around in the UI and re-run to
-regenerate the map. Both are one-shot — neither reacts to POI moves
+regenerate the map. Both are one-shot - neither reacts to POI moves
 without you re-running the script.
 
   ./row_generator_polygon.py                  # tag 'cov-2'
@@ -52,8 +52,8 @@ from clearpath_mission_manager_msgs.srv import (
 from clearpath_mission_manager_msgs.msg import MapEdgeReq
 from clearpath_navigation_msgs.msg import MapPoint
 
-from common.argparse_base import make_parser
-from common.ros_helpers import wait_for_service, call_service
+from examples.common.argparse_base import make_parser
+from examples.common.ros_helpers import wait_for_service, call_service
 
 
 SPEED_LIMIT_M_S = 1.0

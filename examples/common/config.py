@@ -30,7 +30,7 @@ def normalize_namespace(ns: str) -> str:
 def namespace() -> str:
     """Robot namespace from $ONAV_NAMESPACE (leading slash, no trailing), or ''.
 
-    No hardcoded serial — scripts are namespace-agnostic. When unset, callers either
+    No hardcoded serial - scripts are namespace-agnostic. When unset, callers either
     pass --namespace, load a transport profile that sets ONAV_NAMESPACE (docker/*.env),
     or use resolve_namespace() to auto-detect from the live graph.
     """
@@ -94,7 +94,7 @@ def resolve_namespace(node, explicit: str = "") -> str:
         return detected[0]
     if not detected:
         raise RuntimeError(
-            "no robot namespace on the graph — pass --namespace, set $ONAV_NAMESPACE, "
+            "no robot namespace on the graph - pass --namespace, set $ONAV_NAMESPACE, "
             "or load a transport profile (docker/*.env)."
         )
-    raise RuntimeError(f"multiple robot namespaces {detected} — pass --namespace to pick one.")
+    raise RuntimeError(f"multiple robot namespaces {detected} - pass --namespace to pick one.")

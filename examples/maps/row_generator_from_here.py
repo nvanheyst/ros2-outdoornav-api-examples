@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Boustrophedon coverage map at the robot's CURRENT position + heading — no input.
+"""Boustrophedon coverage map at the robot's CURRENT position + heading - no input.
 
 Same idea as row_generator_square.py, but instead of --lat/--lon/--bearing it
 reads the live GPS fix and the map->base_link heading, so it runs with zero
@@ -38,9 +38,9 @@ from clearpath_mission_manager_msgs.srv import CreateMap
 from clearpath_mission_manager_msgs.msg import MapEdgeReq
 from clearpath_navigation_msgs.msg import MapPoint
 
-from common.argparse_base import make_parser
-from common.ros_helpers import wait_for_service, call_service
-# Reuse the geometry from the fixed-coordinate version — this script only swaps
+from examples.common.argparse_base import make_parser
+from examples.common.ros_helpers import wait_for_service, call_service
+# Reuse the geometry from the fixed-coordinate version - this script only swaps
 # where the centre + bearing come from.
 from row_generator_square import (
     boustrophedon, offset_ll, DEFAULT_EDGE_RADIUS_M, DEFAULT_SPEED_LIMIT_M_S,
@@ -167,7 +167,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     if not args.namespace:
-        print("error: no namespace — set ONAV_NAMESPACE (docker/*.env) or pass --namespace",
+        print("error: no namespace - set ONAV_NAMESPACE (docker/*.env) or pass --namespace",
               file=sys.stderr)
         return 2
 

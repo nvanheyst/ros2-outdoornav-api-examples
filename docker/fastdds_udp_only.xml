@@ -5,14 +5,14 @@
   Why this exists: the container runs with network_mode: host, so it shares the
   robot's network and reaches the discovery server on loopback. But Fast DDS
   prefers its SHARED-MEMORY transport for same-host participants, and the
-  container has its own /dev/shm — it does not share the host's SHM segments
+  container has its own /dev/shm - it does not share the host's SHM segments
   (even --ipc=host did not bridge them in testing). Result: small samples that
   fall back to UDP loopback arrive (e.g. 2D scan), but large fragmented samples
-  sent over the SHM locator never do (3D pointclouds, images, costmaps) — the
+  sent over the SHM locator never do (3D pointclouds, images, costmaps) - the
   container sees the topic but gets zero messages.
 
   Forcing UDPv4-only (useBuiltinTransports=false + a single UDP transport)
-  removes SHM from the picture, so every message — large or small — reaches the
+  removes SHM from the picture, so every message - large or small - reaches the
   container over UDP loopback. Proven on cpr-a300-00070: pointcloud delivery in
   the container matches host bash (~8.6 Hz) with this profile, 0 without it.
 

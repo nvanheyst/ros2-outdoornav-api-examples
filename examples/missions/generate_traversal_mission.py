@@ -39,13 +39,13 @@ from rclpy.action import ActionClient
 from clearpath_mission_manager_msgs.srv import GetMap, CreateNetworkMission, CreateWaypoint
 from clearpath_navigation_msgs.action import ExecuteMission
 
-from common.argparse_base import make_parser
-from common.config import map_id as default_map_id
-from common.ros_helpers import wait_for_service, wait_for_action, call_service
+from examples.common.argparse_base import make_parser
+from examples.common.config import map_id as default_map_id
+from examples.common.ros_helpers import wait_for_service, wait_for_action, call_service
 
 
 DEFAULT_POSITION_TOLERANCE_M = 1.0
-# Negative disables the heading constraint — robot flows through the waypoint
+# Negative disables the heading constraint - robot flows through the waypoint
 # without spinning to match. Tangent heading is still set as a hint.
 DEFAULT_YAW_TOLERANCE_DEG = -1.0
 
@@ -214,12 +214,12 @@ class TraversalMission(Node):
         points, connections = self.fetch_map()
         if detect_chain(points, connections):
             self.get_logger().info(
-                f"chain map detected ({len(points)} points) — using sequential order"
+                f"chain map detected ({len(points)} points) - using sequential order"
             )
             order = order_chain(points, connections)
         else:
             self.get_logger().info(
-                f"mesh map detected ({len(points)} points, {len(connections)} edges) — "
+                f"mesh map detected ({len(points)} points, {len(connections)} edges) - "
                 "walking the connection graph with least-turn preference"
             )
             order = order_graph_walk(points, connections)

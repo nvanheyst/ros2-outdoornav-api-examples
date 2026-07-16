@@ -17,7 +17,7 @@ the clone; the original is preserved. With `--around-me`, the centre is
 the robot's current GPS fix instead of an explicit lat/lon.
 
 The `-1.0` sentinel for `speed_limit`, `radius`, and `cost_factor` in
-the `UpdateMapEdges` request means "leave unchanged" — passing only
+the `UpdateMapEdges` request means "leave unchanged" - passing only
 `--speed` updates speed and leaves radius/cost intact.
 
 Touches:
@@ -40,9 +40,9 @@ from rclpy.node import Node
 from sensor_msgs.msg import NavSatFix
 from clearpath_mission_manager_msgs.srv import GetMap, CloneMap, UpdateMapEdges
 
-from common.argparse_base import make_parser
-from common.config import map_id as default_map_id
-from common.ros_helpers import wait_for_service, call_service
+from examples.common.argparse_base import make_parser
+from examples.common.config import map_id as default_map_id
+from examples.common.ros_helpers import wait_for_service, call_service
 
 
 EARTH_R = 6_371_000.0
@@ -88,7 +88,7 @@ class BulkEdit(Node):
                 raise TimeoutError(f"no fix within {timeout_s} s on {self.fix_topic}")
             m = self._latest_fix
             if math.isnan(m.latitude) or math.isnan(m.longitude):
-                raise RuntimeError("fix contains NaN — robot may not have a valid fix yet")
+                raise RuntimeError("fix contains NaN - robot may not have a valid fix yet")
             return (m.latitude, m.longitude)
         finally:
             self.destroy_subscription(sub)

@@ -3,13 +3,13 @@
 Docker image with ROS 2 Jazzy + the Clearpath message + API library overlay
 pre-built. Three roles:
 
-1. **CI / smoke testing** — `docker compose run --rm dev ./ci/smoke_all.sh`.
+1. **CI / smoke testing** - `docker compose run --rm dev ./docker/ci/smoke_all.sh`.
    What it does on every push to GitHub.
-2. **Dev environment for the examples** — `docker compose run --rm dev`
+2. **Dev environment for the examples** - `docker compose run --rm dev`
    gives you an interactive shell with everything sourced, no host install
    needed. The repo is bind-mounted at `/repo`, so edits on the host are
    live inside the container.
-3. **A drop-in API client for offboard machines or the robot itself** —
+3. **A drop-in API client for offboard machines or the robot itself** -
    the image runs on Linux, macOS (Docker Desktop), or Windows (WSL2).
    Set `ROS_DOMAIN_ID` and pick an RMW (FastDDS / Cyclone / Zenoh) to
    match the robot, and your scripts talk to OutdoorNav as if you were on the
@@ -23,7 +23,7 @@ The image is published to GHCR as `ghcr.io/nvh-cpr/onav-lab-dev:latest`.
 `latest` is only published from `main`. PR builds publish temporary
 `pr-<number>` tags.
 
-Docker CI runs `./ci/smoke_all.sh` and `./ci/scenario_smoke.sh` inside the
+Docker CI runs `./docker/ci/smoke_all.sh` and `./docker/ci/scenario_smoke.sh` inside the
 built container before it pushes an image.
 
 In scenario smoke, you should see three `==> scenario:` lines and dry-run
@@ -31,7 +31,7 @@ output for each command.
 
 ## Pull
 
-The image is public — no GHCR login needed. Pulling the prebuilt `:latest`
+The image is public - no GHCR login needed. Pulling the prebuilt `:latest`
 is the preferred path; you only need to build locally if you're changing the
 Dockerfile.
 
@@ -56,13 +56,13 @@ CycloneDDS + namespace block you can use as-is (or edit the three values to
 match your robot). To stay on FastDDS instead, comment the CycloneDDS lines
 and uncomment the FastDDS block.
 
-- **FastDDS** — default. Optionally point `FASTRTPS_DEFAULT_PROFILES_FILE`
+- **FastDDS** - default. Optionally point `FASTRTPS_DEFAULT_PROFILES_FILE`
   at your own XML for custom transport / discovery tuning.
-- **CycloneDDS** — uses `docker/cyclonedds.xml`. Edit the
+- **CycloneDDS** - uses `docker/cyclonedds.xml`. Edit the
   `<NetworkInterface name=…/>` line to the interface that reaches your
-  robot (`eth0`, `enp4s0`, etc.). Wired ethernet only — RELIABLE QoS
+  robot (`eth0`, `enp4s0`, etc.). Wired ethernet only - RELIABLE QoS
   retransmits for service requests don't tolerate wifi packet loss.
-- **Zenoh** — `rmw_zenoh_cpp` is not pre-installed; add it to the
+- **Zenoh** - `rmw_zenoh_cpp` is not pre-installed; add it to the
   Dockerfile if you want to use it, then point `ZENOH_CONFIG_OVERRIDE` at
   your config.
 
@@ -76,7 +76,7 @@ work.
 
 A real OutdoorNav robot puts its ROS graph behind a **Fast DDS discovery server**
 on loopback (not multicast), so **run the container on the robot itself**. Use the
-`real-amp.env` profile — it sets the discovery server, super-client (needed to
+`real-amp.env` profile - it sets the discovery server, super-client (needed to
 enumerate the graph), the per-robot domain, and a UDP-only Fast DDS profile:
 
 ```bash
@@ -90,12 +90,12 @@ ros2 topic echo sensors/lidar3d_0/pointcloud                   # 3D, default (re
 Set `ROS_DOMAIN_ID` in `real-amp.env` to your robot (read `system.ros2.domain_id`
 from `/etc/clearpath/robot.yaml`).
 
-QoS is per-topic — match the publisher (`ros2 topic info -v <topic>`): the 2D scan
+QoS is per-topic - match the publisher (`ros2 topic info -v <topic>`): the 2D scan
 is BEST_EFFORT (pass `--qos-reliability best_effort`), the 3D pointcloud is RELIABLE
 (use the default reader). `real-amp.env` also points
 `FASTRTPS_DEFAULT_PROFILES_FILE` at `docker/fastdds_udp_only.xml`: the container
 can't share the host's Fast DDS shared-memory segments, so without UDP-only
-transport large messages (pointclouds, images) never arrive while small ones do —
+transport large messages (pointclouds, images) never arrive while small ones do -
 see that file's header. Off-robot clients can't reach the loopback discovery server
 directly; bridge in with a Zenoh router.
 

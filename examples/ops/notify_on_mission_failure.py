@@ -15,7 +15,7 @@
 
 Passive: catches any mission abort whether it was launched from the web UI or a
 script. Rich failure detail (which waypoint failed, why) is only delivered to
-the client that *sent* the goal — see the active-variant note near the bottom
+the client that *sent* the goal - see the active-variant note near the bottom
 if you need that.
 
 The notifier collects a FailureContext at the moment of abort: namespace, goal
@@ -55,7 +55,7 @@ from action_msgs.msg import GoalStatusArray, GoalStatus
 from sensor_msgs.msg import NavSatFix, CompressedImage
 from clearpath_navigation_msgs.msg import AutonomyStatus
 
-from common.argparse_base import make_parser
+from examples.common.argparse_base import make_parser
 
 
 @dataclass

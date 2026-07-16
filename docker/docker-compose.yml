@@ -15,7 +15,7 @@ services:
     network_mode: host
     # RMW + DDS config are intentionally not hardcoded. Defaults to FastDDS
     # (matches OutdoorNav and the ROS 2 Jazzy default). Override via .env if
-    # you run Cyclone or Zenoh — see .env.example.
+    # you run Cyclone or Zenoh - see .env.example.
     environment:
       - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-25}
       - RMW_IMPLEMENTATION=${RMW_IMPLEMENTATION:-rmw_fastrtps_cpp}
@@ -34,6 +34,7 @@ services:
     volumes:
       - ../:/repo:rw
       - ./cyclonedds.xml:/cyclonedds.xml:ro
+      - ./fastdds_udp_only.xml:/fastdds_udp_only.xml:ro
     working_dir: /repo
     stdin_open: true
     tty: true

@@ -6,11 +6,11 @@
 #
 #   ONAV_NAMESPACE=/a300_00003 \
 #   ONAV_MAP_ID=... ONAV_MISSION_ID=... ONAV_POI_ID=... \
-#   ./ci/live_dryrun.sh
+#   ./docker/ci/live_dryrun.sh
 
 set -uo pipefail
 
-cd "$(dirname "$0")/.." || exit
+cd "$(dirname "$0")/../.." || exit
 
 PASS=0; FAIL=0
 
@@ -41,7 +41,7 @@ fi
 if [ -n "${ONAV_MISSION_ID:-}" ] && [ -n "${ONAV_MAP_ID:-}" ]; then
     run "loop mission (dry)"        python3 examples/missions/loop_mission_battery_aware.py --dry-run
     run "schedule mission (dry)"    python3 examples/missions/schedule_mission.py +1m --dry-run
-    run "recover from abort (dry)"  python3 examples/missions/recover_from_abort.py --dry-run
+    run "recover from abort (dry)"  python3 examples/ops/recover_from_abort.py --dry-run
 fi
 run "drive forward (dry)" python3 examples/control/drive_robot_forward.py --dry-run
 run "stop autonomy (dry)" python3 examples/control/stop_autonomy.py --dry-run
