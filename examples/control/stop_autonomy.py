@@ -5,7 +5,7 @@
   ./stop_autonomy.py --dry-run      # print the call without executing
 
 This calls the Trigger service that aborts whatever the autonomy stack is
-doing — mission, goto, replan. Robot brakes; mission action returns aborted.
+doing - mission, goto, replan. Robot brakes; mission action returns aborted.
 
 Touches: service <namespace>/autonomy/stop (std_srvs/Trigger).
 """
@@ -20,8 +20,8 @@ import rclpy
 from rclpy.node import Node
 from std_srvs.srv import Trigger
 
-from common.argparse_base import make_parser
-from common.ros_helpers import wait_for_service, call_service
+from examples.common.argparse_base import make_parser
+from examples.common.ros_helpers import wait_for_service, call_service
 
 
 class StopAutonomy(Node):

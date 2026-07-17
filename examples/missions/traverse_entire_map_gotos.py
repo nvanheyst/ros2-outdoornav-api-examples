@@ -37,13 +37,13 @@ from clearpath_mission_manager_msgs.srv import GetMap
 from clearpath_navigation_msgs.msg import Waypoint
 from clearpath_navigation_msgs.action import ExecuteGoTo
 
-from common.argparse_base import make_parser
-from common.config import map_id as default_map_id
-from common.ros_helpers import wait_for_service, wait_for_action, call_service
+from examples.common.argparse_base import make_parser
+from examples.common.config import map_id as default_map_id
+from examples.common.ros_helpers import wait_for_service, wait_for_action, call_service
 
 
 POSITION_TOLERANCE_M = 1.0
-# Negative disables heading constraint — pass-through, no spin to match.
+# Negative disables heading constraint - pass-through, no spin to match.
 YAW_TOLERANCE_RAD = -1.0
 EARTH_R = 6_371_000.0
 

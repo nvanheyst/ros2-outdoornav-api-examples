@@ -32,8 +32,8 @@ from clearpath_mission_manager_msgs.srv import CreateMap
 from clearpath_mission_manager_msgs.msg import MapEdgeReq
 from clearpath_navigation_msgs.msg import MapPoint
 
-from common.argparse_base import make_parser
-from common.ros_helpers import wait_for_service
+from examples.common.argparse_base import make_parser
+from examples.common.ros_helpers import wait_for_service
 
 
 EDGE_RADIUS_M = 1.5
@@ -139,7 +139,7 @@ def main(argv=None):
     node = PathRecorder(args.namespace, args.min_distance)
     node.get_logger().info(
         f"recording from {node.fix_topic}. Ctrl-C to stop"
-        + (f" and save as {args.map_name!r}." if args.map_name else " (no save — will print points).")
+        + (f" and save as {args.map_name!r}." if args.map_name else " (no save - will print points).")
     )
 
     stop = threading.Event()

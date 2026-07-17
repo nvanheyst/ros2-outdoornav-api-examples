@@ -13,7 +13,7 @@ Showcases the full pause/resume/stop interface in one flow:
   ONAV_POI_ID=<uuid> ONAV_MAP_ID=<uuid> ./pause_and_teleop.py
 
 CAUTION: pause/resume paths differ across OutdoorNav releases. This
-example uses `<ns>/autonomy/pause` (SetBool) — the OutdoorNav 2.3
+example uses `<ns>/autonomy/pause` (SetBool) - the OutdoorNav 2.3
 default. If your stack only exposes `<ns>/control_selection/pause` or
 the Trigger flavour of `<ns>/autonomy/pause`, run `pause_resume.py`
 with the matching `--variant` to confirm before retrying this script.
@@ -42,9 +42,9 @@ from std_srvs.srv import SetBool, Trigger
 from geometry_msgs.msg import Twist, TwistStamped
 from clearpath_navigation_msgs.action import ExecuteGoToPOI
 
-from common.argparse_base import make_parser
-from common.config import map_id as default_map_id, poi_id as default_poi_id
-from common.ros_helpers import wait_for_service, wait_for_action
+from examples.common.argparse_base import make_parser
+from examples.common.config import map_id as default_map_id, poi_id as default_poi_id
+from examples.common.ros_helpers import wait_for_service, wait_for_action
 
 
 TURN_ANGLE_RAD = math.pi

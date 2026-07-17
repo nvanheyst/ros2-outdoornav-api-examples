@@ -4,16 +4,16 @@
 # - No script imports clearpath_outdoornav_api_lib (the audit hook).
 #
 # Run from the repo root:
-#   ./ci/smoke_all.sh
+#   ./docker/ci/smoke_all.sh
 
 set -euo pipefail
 
-cd "$(dirname "$0")/.." || exit
+cd "$(dirname "$0")/../.." || exit
 
 # 1. No app-lib imports anywhere in examples/, patterns/, or common/.
 echo "==> grep: no clearpath_outdoornav_api_lib imports"
 if grep -rnE "^(from|import)[[:space:]]+clearpath_outdoornav_api_lib" \
-       examples/ patterns/ common/ 2>/dev/null; then
+       examples/ 2>/dev/null; then
     echo "FAIL: app-lib import detected. This folder is raw-ROS only."
     exit 1
 fi
@@ -38,7 +38,7 @@ while IFS= read -r script; do
         echo "      $out_indented"
         fail=$((fail + 1))
     fi
-done < <(find examples/ patterns/ -name "*.py" -not -name "__init__.py")
+done < <(find examples/ -name "*.py" -not -name "__init__.py" -not -path 'examples/common/*')
 
 echo
 echo "pass=$pass skipped=$skip fail=$fail"

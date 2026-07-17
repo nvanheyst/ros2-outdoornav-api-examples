@@ -6,9 +6,9 @@
   ./mission_with_recording.py --skip-mission     # just start/stop, useful for plumbing checks
 
 Sequence:
-  1. /<ns>/log_manager/start_recording (Trigger) — opens an EventLog
-  2. /<ns>/autonomy/mission (ExecuteMission) — runs the mission
-  3. /<ns>/log_manager/stop_recording (Trigger) — closes the log
+  1. /<ns>/log_manager/start_recording (Trigger) - opens an EventLog
+  2. /<ns>/autonomy/mission (ExecuteMission) - runs the mission
+  3. /<ns>/log_manager/stop_recording (Trigger) - closes the log
 
 The recorded log shows up in the OutdoorNav UI under the operator's log list.
 Mission telemetry, fix, video, and any other auto-recorded channels are
@@ -17,7 +17,7 @@ captured for the duration of step 1 → step 3.
 Some OutdoorNav releases ship `StartRecording` / `StopRecording`
 (`clearpath_logger_msgs`) which take a name / custom_fields_json instead
 of Trigger. Run `service_inventory.py --grep log_manager` first to check
-what type your stack actually exposes — this example assumes Trigger.
+what type your stack actually exposes - this example assumes Trigger.
 
 If the mission goal is rejected, the script still calls stop_recording
 so you don't leave a dangling open log.
@@ -41,9 +41,9 @@ from rclpy.action import ActionClient
 from std_srvs.srv import Trigger
 from clearpath_navigation_msgs.action import ExecuteMission
 
-from common.argparse_base import make_parser
-from common.config import map_id as default_map_id, mission_id as default_mission_id
-from common.ros_helpers import wait_for_service, wait_for_action, call_service
+from examples.common.argparse_base import make_parser
+from examples.common.config import map_id as default_map_id, mission_id as default_mission_id
+from examples.common.ros_helpers import wait_for_service, wait_for_action, call_service
 
 
 class MissionWithRecording(Node):
@@ -70,7 +70,7 @@ class MissionWithRecording(Node):
         resp = call_service(self, client, Trigger.Request())
         ok = bool(resp and resp.success)
         msg = getattr(resp, "message", "") or "(no message)"
-        self.get_logger().info(f"{srv_name}: {'OK' if ok else 'FAILED'} — {msg}")
+        self.get_logger().info(f"{srv_name}: {'OK' if ok else 'FAILED'} - {msg}")
         return ok
 
     def start_recording(self) -> bool:
@@ -91,7 +91,7 @@ class MissionWithRecording(Node):
         if not self._goal_handle or not self._goal_handle.accepted:
             self.get_logger().error("ExecuteMission goal rejected")
             return False
-        self.get_logger().info("mission accepted — blocking on result")
+        self.get_logger().info("mission accepted - blocking on result")
         result_future = self._goal_handle.get_result_async()
         rclpy.spin_until_future_complete(self, result_future)
         self._goal_handle = None

@@ -27,8 +27,8 @@ import rclpy
 from rclpy.node import Node
 from clearpath_logger_msgs.srv import GetAllLogs, DeleteLog
 
-from common.argparse_base import make_parser
-from common.ros_helpers import wait_for_service, call_service
+from examples.common.argparse_base import make_parser
+from examples.common.ros_helpers import wait_for_service, call_service
 
 
 class DeleteLogs(Node):

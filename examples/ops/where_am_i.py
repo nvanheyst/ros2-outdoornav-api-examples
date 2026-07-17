@@ -18,7 +18,7 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import NavSatFix
 
-from common.argparse_base import make_parser
+from examples.common.argparse_base import make_parser
 
 
 class WhereAmI(Node):

@@ -20,11 +20,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build local test image
-        run: docker build -t onav-api-examples:ci ./docker
+        run: docker build -t onav-lab-dev:ci ./docker
       - name: Run offline smoke in container
-        run: docker run --rm -v "${{ github.workspace }}:/repo" -w /repo onav-api-examples:ci bash -lc "./ci/smoke_all.sh"
+        run: docker run --rm -v "${{ github.workspace }}:/repo" -w /repo onav-lab-dev:ci bash -lc "./docker/ci/smoke_all.sh"
       - name: Run scenario smoke in container
-        run: docker run --rm -v "${{ github.workspace }}:/repo" -w /repo onav-api-examples:ci bash -lc "./ci/scenario_smoke.sh"
+        run: docker run --rm -v "${{ github.workspace }}:/repo" -w /repo onav-lab-dev:ci bash -lc "./docker/ci/scenario_smoke.sh"
 
   pr-build-test-and-push-temp:
     if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.head.repo.fork == false
@@ -42,14 +42,14 @@ jobs:
           context: ./docker
           file: ./docker/Dockerfile
           load: true
-          tags: onav-api-examples:ci
+          tags: onav-lab-dev:ci
           platforms: linux/amd64
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Run offline smoke in container
-        run: docker run --rm -v "${{ github.workspace }}:/repo" -w /repo onav-api-examples:ci bash -lc "./ci/smoke_all.sh"
+        run: docker run --rm -v "${{ github.workspace }}:/repo" -w /repo onav-lab-dev:ci bash -lc "./docker/ci/smoke_all.sh"
       - name: Run scenario smoke in container
-        run: docker run --rm -v "${{ github.workspace }}:/repo" -w /repo onav-api-examples:ci bash -lc "./ci/scenario_smoke.sh"
+        run: docker run --rm -v "${{ github.workspace }}:/repo" -w /repo onav-lab-dev:ci bash -lc "./docker/ci/scenario_smoke.sh"
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -62,7 +62,7 @@ jobs:
           file: ./docker/Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: ghcr.io/nvanheyst/onav-api-examples:pr-${{ github.event.pull_request.number }}
+          tags: ghcr.io/nvh-cpr/onav-lab-dev:pr-${{ github.event.pull_request.number }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -77,7 +77,7 @@ jobs:
         with:
           script: |
             const owner = context.repo.owner;
-            const packageName = "onav-api-examples";
+            const packageName = "onav-lab-dev";
             const tag = `pr-${context.payload.pull_request.number}`;
             const versions = await github.paginate(
               github.rest.packages.getAllPackageVersionsForPackageOwnedByUser,
@@ -119,14 +119,14 @@ jobs:
           context: ./docker
           file: ./docker/Dockerfile
           load: true
-          tags: onav-api-examples:ci
+          tags: onav-lab-dev:ci
           platforms: linux/amd64
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Run offline smoke in container
-        run: docker run --rm -v "${{ github.workspace }}:/repo" -w /repo onav-api-examples:ci bash -lc "./ci/smoke_all.sh"
+        run: docker run --rm -v "${{ github.workspace }}:/repo" -w /repo onav-lab-dev:ci bash -lc "./docker/ci/smoke_all.sh"
       - name: Run scenario smoke in container
-        run: docker run --rm -v "${{ github.workspace }}:/repo" -w /repo onav-api-examples:ci bash -lc "./ci/scenario_smoke.sh"
+        run: docker run --rm -v "${{ github.workspace }}:/repo" -w /repo onav-lab-dev:ci bash -lc "./docker/ci/scenario_smoke.sh"
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -139,6 +139,6 @@ jobs:
           file: ./docker/Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: ghcr.io/nvanheyst/onav-api-examples:latest
+          tags: ghcr.io/nvh-cpr/onav-lab-dev:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max

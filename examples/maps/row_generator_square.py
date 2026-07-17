@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Boustrophedon coverage map over a rectangle (centre + w/h + bearing).
 
-Pushes the map via mission_manager/create_map. **One-way edges** —
+Pushes the map via mission_manager/create_map. **One-way edges** -
 each waypoint connects to the next in sequence (chain). All geometry
 comes from CLI flags, so re-running with the same args reproduces the
 same map. Pair with `generate_traversal_mission.py` to drive it.
@@ -32,8 +32,8 @@ from clearpath_mission_manager_msgs.srv import CreateMap
 from clearpath_mission_manager_msgs.msg import MapEdgeReq
 from clearpath_navigation_msgs.msg import MapPoint
 
-from common.argparse_base import make_parser
-from common.ros_helpers import wait_for_service, call_service
+from examples.common.argparse_base import make_parser
+from examples.common.ros_helpers import wait_for_service, call_service
 
 
 DEFAULT_EDGE_RADIUS_M = 1.5

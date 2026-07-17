@@ -33,8 +33,8 @@ from clearpath_mission_manager_msgs.srv import CreateMap
 from clearpath_mission_manager_msgs.msg import MapEdgeReq
 from clearpath_navigation_msgs.msg import MapPoint
 
-from common.argparse_base import make_parser
-from common.ros_helpers import wait_for_service, call_service
+from examples.common.argparse_base import make_parser
+from examples.common.ros_helpers import wait_for_service, call_service
 
 
 def build_map_request(data: dict, override_name: str | None) -> CreateMap.Request:

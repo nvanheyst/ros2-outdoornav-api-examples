@@ -6,7 +6,7 @@
   ./schedule_mission.py +5m --mission-uuid <uuid> --map-uuid <uuid>
 
 Not a scheduler. This is the wait-then-fire that you would invoke from
-a real scheduler (systemd timer, cron, etc.) — the python loop here is
+a real scheduler (systemd timer, cron, etc.) - the python loop here is
 just to demonstrate the action call.
 
 Touches: action <namespace>/autonomy/mission (ExecuteMission).
@@ -26,9 +26,9 @@ from rclpy.node import Node
 from rclpy.action import ActionClient
 from clearpath_navigation_msgs.action import ExecuteMission
 
-from common.argparse_base import make_parser
-from common.config import map_id as default_map_id, mission_id as default_mission_id
-from common.ros_helpers import wait_for_action
+from examples.common.argparse_base import make_parser
+from examples.common.config import map_id as default_map_id, mission_id as default_mission_id
+from examples.common.ros_helpers import wait_for_action
 
 
 HEARTBEAT_S = 5.0
@@ -63,7 +63,7 @@ class ScheduledMission(Node):
             now = datetime.now(timezone.utc)
             remaining = (self.target - now).total_seconds()
             if remaining <= 0:
-                self.get_logger().info("target reached — firing mission")
+                self.get_logger().info("target reached - firing mission")
                 return
             self.get_logger().info(f"  T-{int(remaining)}s  (target {self.target.isoformat()})")
             time.sleep(min(HEARTBEAT_S, remaining))
@@ -76,7 +76,7 @@ class ScheduledMission(Node):
         if not self._goal_handle or not self._goal_handle.accepted:
             self.get_logger().error("ExecuteMission goal rejected")
             return False
-        self.get_logger().info("mission accepted — blocking on result")
+        self.get_logger().info("mission accepted - blocking on result")
         result_future = self._goal_handle.get_result_async()
         rclpy.spin_until_future_complete(self, result_future)
         status = result_future.result().status if result_future.result() else None

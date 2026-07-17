@@ -6,7 +6,7 @@
   ONAV_NAMESPACE=/a300_00003 ./drive_robot_forward.py
 
 Bypasses autonomy. Distance is "drive for this long," not "drive exactly N
-metres" — no odometry feedback. Don't run while a mission is active.
+metres" - no odometry feedback. Don't run while a mission is active.
 
 Touches: topic <namespace>/ui_teleop/cmd_vel (TwistStamped, publish only).
 """
@@ -22,7 +22,7 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist, TwistStamped
 
-from common.argparse_base import make_parser
+from examples.common.argparse_base import make_parser
 
 
 PUBLISH_HZ = 20.0

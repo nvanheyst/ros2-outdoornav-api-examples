@@ -46,7 +46,7 @@ from sensor_msgs.msg import NavSatFix, BatteryState
 from clearpath_navigation_msgs.msg import AutonomyStatus
 from lifecycle_msgs.srv import GetState
 
-from common.argparse_base import make_parser
+from examples.common.argparse_base import make_parser
 
 
 ACTIVITY_NAMES = {

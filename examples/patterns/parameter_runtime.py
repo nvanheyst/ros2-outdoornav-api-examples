@@ -30,7 +30,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 import rclpy
 from rclpy.node import Node
@@ -39,8 +39,8 @@ from rcl_interfaces.srv import (
     GetParameters, SetParameters, ListParameters, DescribeParameters,
 )
 
-from common.argparse_base import make_parser
-from common.ros_helpers import wait_for_service, call_service
+from examples.common.argparse_base import make_parser
+from examples.common.ros_helpers import wait_for_service, call_service
 
 
 TYPE_NAMES = {

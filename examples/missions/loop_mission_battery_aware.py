@@ -24,9 +24,9 @@ from rclpy.action import ActionClient
 from sensor_msgs.msg import BatteryState
 from clearpath_navigation_msgs.action import ExecuteMission
 
-from common.argparse_base import make_parser
-from common.config import map_id as default_map_id, mission_id as default_mission_id
-from common.ros_helpers import wait_for_action
+from examples.common.argparse_base import make_parser
+from examples.common.config import map_id as default_map_id, mission_id as default_mission_id
+from examples.common.ros_helpers import wait_for_action
 
 
 class BatteryAwareLoop(Node):
@@ -45,7 +45,7 @@ class BatteryAwareLoop(Node):
         self._goal_handle = None
 
     def _bms_cb(self, msg: BatteryState) -> None:
-        # BatteryState.percentage is 0.0–1.0
+        # BatteryState.percentage is 0.0-1.0
         self.latest_percent = float(msg.percentage) * 100.0
 
     def wait_for_initial(self) -> None:
@@ -87,12 +87,12 @@ class BatteryAwareLoop(Node):
             )
             if pct < self.threshold:
                 self.get_logger().warn(
-                    f"battery {pct:.1f}% below threshold {self.threshold:.1f}% — stopping"
+                    f"battery {pct:.1f}% below threshold {self.threshold:.1f}% - stopping"
                 )
                 return
             ok = self.run_mission_blocking()
             if not ok:
-                self.get_logger().error(f"loop {i} mission failed — stopping")
+                self.get_logger().error(f"loop {i} mission failed - stopping")
                 return
         self.get_logger().info(f"completed all {self.max_loops} loops")
 

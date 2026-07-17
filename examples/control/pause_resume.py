@@ -6,7 +6,7 @@
   ./pause_resume.py --variant control_setbool   # legacy /control_selection/pause SetBool
   ./pause_resume.py --variant autonomy_trigger  # legacy /autonomy/pause Trigger
 
-Three service interfaces exist across OutdoorNav releases — observed on
+Three service interfaces exist across OutdoorNav releases - observed on
 current OutdoorNav 2.3 stacks:
   autonomy_setbool (default):
     <ns>/autonomy/pause              (std_srvs/SetBool, data=true to pause)
@@ -19,7 +19,7 @@ current OutdoorNav 2.3 stacks:
     <ns>/autonomy/resume             (std_srvs/Trigger)
 
 Run `service_inventory.py | grep -E 'pause|resume'` on your stack first
-to confirm both the path and the type — same path can carry different
+to confirm both the path and the type - same path can carry different
 types between releases.
 """
 
@@ -34,8 +34,8 @@ import rclpy
 from rclpy.node import Node
 from std_srvs.srv import SetBool, Trigger
 
-from common.argparse_base import make_parser
-from common.ros_helpers import wait_for_service, call_service
+from examples.common.argparse_base import make_parser
+from examples.common.ros_helpers import wait_for_service, call_service
 
 
 class PauseResume(Node):

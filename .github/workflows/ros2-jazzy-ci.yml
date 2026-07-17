@@ -21,7 +21,7 @@ jobs:
       - name: Install ruff
         run: python3 -m pip install --upgrade pip ruff
       - name: Ruff
-        run: ruff check --select E9,F63,F7,F82 common examples
+        run: ruff check --select E9,F63,F7,F82 examples
 
   shell-lint:
     runs-on: ubuntu-latest
@@ -32,7 +32,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends shellcheck
       - name: ShellCheck
-        run: shellcheck ci/*.sh docker/entrypoint.sh
+        run: shellcheck docker/ci/*.sh docker/entrypoint.sh
 
   jazzy-offline-smoke:
     runs-on: ubuntu-latest
@@ -44,11 +44,11 @@ jobs:
         run: |
           apt-get update
           apt-get install -y --no-install-recommends python3-pip
-          python3 -m pip install --no-cache-dir --break-system-packages -r requirements.txt
+          python3 -m pip install --no-cache-dir --break-system-packages -r docker/requirements.txt
       - name: Compile python modules
-        run: python3 -m compileall common examples
+        run: python3 -m compileall examples
       - name: Run offline smoke
-        run: ./ci/smoke_all.sh
+        run: ./docker/ci/smoke_all.sh
 
   jazzy-ros-smoke:
     runs-on: ubuntu-latest
@@ -61,9 +61,9 @@ jobs:
           context: ./docker
           file: ./docker/Dockerfile
           load: true
-          tags: onav-api-examples:ci
+          tags: onav-lab-dev:ci
           platforms: linux/amd64
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Run ROS scenario smoke in container
-        run: docker run --rm -v "${{ github.workspace }}:/repo" -w /repo onav-api-examples:ci bash -lc "./ci/scenario_smoke.sh"
+        run: docker run --rm -v "${{ github.workspace }}:/repo" -w /repo onav-lab-dev:ci bash -lc "./docker/ci/scenario_smoke.sh"

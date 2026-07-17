@@ -17,7 +17,7 @@ Two ways to plug it in:
       Context-manager form. Wrap any spin loop; on Ctrl-C it pulls the
       current goal handle from the callable and cancels it.
 
-Both call `cancel_goal_blocking()` under the hood — exposed too if you
+Both call `cancel_goal_blocking()` under the hood - exposed too if you
 need it.
 
 Demo at the bottom runs an ExecuteMission until Ctrl-C, then cancels.
@@ -33,16 +33,16 @@ import sys
 from pathlib import Path
 from typing import Callable, Optional
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
 from clearpath_navigation_msgs.action import ExecuteMission
 
-from common.argparse_base import make_parser
-from common.config import map_id as default_map_id, mission_id as default_mission_id
-from common.ros_helpers import wait_for_action
+from examples.common.argparse_base import make_parser
+from examples.common.config import map_id as default_map_id, mission_id as default_mission_id
+from examples.common.ros_helpers import wait_for_action
 
 
 def cancel_goal_blocking(node: Node, goal_handle, timeout_sec: float = 5.0) -> Optional[int]:
@@ -62,7 +62,7 @@ def spin_until_done_or_cancel(node: Node, goal_handle,
     try:
         rclpy.spin_until_future_complete(node, result_future, timeout_sec=timeout_sec)
     except KeyboardInterrupt:
-        node.get_logger().warn("Ctrl-C — cancelling in-flight goal")
+        node.get_logger().warn("Ctrl-C - cancelling in-flight goal")
         cancel_goal_blocking(node, goal_handle)
         raise
     result = result_future.result()
@@ -83,7 +83,7 @@ class CancelOnShutdown:
         if exc_type is KeyboardInterrupt:
             handle = self._get()
             if handle is not None:
-                self.node.get_logger().warn("Ctrl-C — cancelling in-flight goal")
+                self.node.get_logger().warn("Ctrl-C - cancelling in-flight goal")
                 cancel_goal_blocking(self.node, handle)
         return False
 
@@ -111,7 +111,7 @@ class DemoCancelOnInterrupt(Node):
         if not self._goal_handle or not self._goal_handle.accepted:
             self.get_logger().error("ExecuteMission goal rejected")
             return False
-        self.get_logger().info("mission accepted — Ctrl-C will cancel cleanly")
+        self.get_logger().info("mission accepted - Ctrl-C will cancel cleanly")
         return True
 
 

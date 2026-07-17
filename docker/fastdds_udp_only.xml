@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Fast DDS transport profile for talking to a REAL robot from this container.
+
+  Why this exists: the container runs with network_mode: host, so it shares the
+  robot's network and reaches the discovery server on loopback. But Fast DDS
+  prefers its SHARED-MEMORY transport for same-host participants, and the
+  container has its own /dev/shm - it does not share the host's SHM segments
+  (even --ipc=host did not bridge them in testing). Result: small samples that
+  fall back to UDP loopback arrive (e.g. 2D scan), but large fragmented samples
+  sent over the SHM locator never do (3D pointclouds, images, costmaps) - the
+  container sees the topic but gets zero messages.
+
+  Forcing UDPv4-only (useBuiltinTransports=false + a single UDP transport)
+  removes SHM from the picture, so every message - large or small - reaches the
+  container over UDP loopback. Proven on cpr-a300-00070: pointcloud delivery in
+  the container matches host bash (~8.6 Hz) with this profile, 0 without it.
+
+  This is only wired into the REAL-robot path (real-amp.env). The sim/default
+  path keeps SHM. Off-robot clients that don't run on the robot's host don't
+  touch SHM anyway.
+-->
+<dds xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+  <profiles>
+    <transport_descriptors>
+      <transport_descriptor>
+        <transport_id>udp_transport</transport_id>
+        <type>UDPv4</type>
+      </transport_descriptor>
+    </transport_descriptors>
+    <participant profile_name="udp_only" is_default_profile="true">
+      <rtps>
+        <userTransports>
+          <transport_id>udp_transport</transport_id>
+        </userTransports>
+        <useBuiltinTransports>false</useBuiltinTransports>
+      </rtps>
+    </participant>
+  </profiles>
+</dds>
