@@ -1,28 +1,22 @@
 #!/usr/bin/env python3
-"""Run a mission and resume from the last waypoint if it aborts.
+"""Run a mission with automatic resume: if the robot aborts, pick up from
+the last waypoint rather than starting over.
 
-  ./mission_with_resume.py                             # 3 retries by default
+  ./mission_with_resume.py                             # up to 3 resume attempts
   ./mission_with_resume.py --max-retries 5 --backoff 10
   ONAV_MAP_ID=<u> ONAV_MISSION_ID=<u> ./mission_with_resume.py
 
 How it works:
-  1. Subscribes to `<ns>/navigation/current_goal_id` (the platform's running
-     waypoint pointer) so we always know which goal is in flight.
-  2. Sends `ExecuteMission`. If the result status is SUCCEEDED → done.
-  3. If the result status is ABORTED → sleep `--backoff` seconds, then call
-     `ExecuteMissionFromGoal` with the last-known current_goal_id. Repeat
-     up to `--max-retries` times.
-  4. Cancelled by operator (e.g. Ctrl-C, web UI stop) → exits without retry.
+  1. Fires ExecuteMission and watches `current_goal_id` to track the active
+     waypoint throughout the run.
+  2. On SUCCEEDED → done.
+  3. On ABORTED → wait `--backoff` seconds, then call ExecuteMissionFromGoal
+     with the last-seen waypoint. Repeat up to `--max-retries` times.
+  4. On CANCELLED (operator stop) → exits without retrying.
 
-Notes:
-  - "Recover from last in-flight waypoint" - retrying *that* waypoint is the
-    safe default. If the platform aborted because of a collision near goal N,
-    you usually want to re-attempt N (path planner picks a new route).
-  - `run_on_start_tasks=False` on the resume call - start-of-mission tasks
-    only fire on the first attempt.
-  - This script started the mission, so it can collect the rich
-    `ExecuteMission.Result` (goal_states, error_code/msg). Logged on abort
-    so you can see WHY before the retry fires.
+  `run_on_start_tasks=False` on resume so start-of-mission tasks only fire
+  once. Abort details (error code, per-waypoint states) are logged before
+  each retry so you can see why it stopped.
 
 Touches:
   action <namespace>/autonomy/mission             (ExecuteMission)

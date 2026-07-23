@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Visit every map node ad-hoc via ExecuteGoTo, in greedy NN order from the current fix.
 
-  ./traverse_entire_map_gotos.py --map-uuid <uuid>
-  ./traverse_entire_map_gotos.py --map-uuid <uuid> --naive   # for comparison
-  ONAV_MAP_ID=<uuid> ./traverse_entire_map_gotos.py
+  ./traverse_entire_map_gotos.py
+  ./traverse_entire_map_gotos.py --naive   # compare with un-optimised order
+  ./traverse_entire_map_gotos.py --map-uuid <uuid>   # skip the map menu
 
 Map nodes aren't POIs, so this uses ExecuteGoTo with a synthetic
 Waypoint per node rather than ExecuteGoToPOI.
@@ -38,13 +38,14 @@ import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
 from sensor_msgs.msg import NavSatFix
-from clearpath_mission_manager_msgs.srv import GetMap
+from clearpath_mission_manager_msgs.srv import GetMap, GetAllMaps
 from clearpath_navigation_msgs.msg import Waypoint
 from clearpath_navigation_msgs.action import ExecuteGoTo
 
 from examples.common.argparse_base import make_parser
 from examples.common.config import map_id as default_map_id
 from examples.common.ros_helpers import wait_for_service, wait_for_action, call_service
+from examples.common.onav import select_map
 
 
 POSITION_TOLERANCE_M = 1.0
@@ -86,16 +87,18 @@ def greedy_nearest(start, pts):
 
 
 class TraverseShortest(Node):
-    def __init__(self, namespace: str, map_uuid: str, naive: bool):
+    def __init__(self, namespace: str, naive: bool):
         super().__init__("traverse_shortest")
-        self.map_uuid = map_uuid
+        self.map_uuid = ""
         self.naive = naive
         self.fix = None
         self.fix_topic = f"{namespace}/localization/fix"
         self.get_map_srv = f"{namespace}/mission_manager/get_map"
+        self.maps_srv = f"{namespace}/mission_manager/get_all_maps"
         self.goto_action = f"{namespace}/autonomy/goto"
         self.create_subscription(NavSatFix, self.fix_topic, self._fix_cb, 10)
         self.get_map_client = self.create_client(GetMap, self.get_map_srv)
+        self.maps_client = self.create_client(GetAllMaps, self.maps_srv)
         self.goto_client = ActionClient(self, ExecuteGoTo, self.goto_action)
         self._goal_handle = None
 
@@ -105,6 +108,7 @@ class TraverseShortest(Node):
 
     def wait_for_inputs(self) -> None:
         wait_for_service(self, self.get_map_client, self.get_map_srv)
+        wait_for_service(self, self.maps_client, self.maps_srv)
         wait_for_action(self, self.goto_client, self.goto_action)
         self.get_logger().info(f"waiting for first fix on {self.fix_topic}...")
         while self.fix is None:
@@ -182,23 +186,21 @@ class TraverseShortest(Node):
 def main(argv=None):
     parser = make_parser(doc=__doc__)
     parser.add_argument("--map-uuid", default=default_map_id() or None,
-                        help="Map UUID (or $ONAV_MAP_ID).")
+                        help="Map UUID (or $ONAV_MAP_ID). Omit for interactive menu.")
     parser.add_argument("--naive", action="store_true",
                         help="Use the order GetMap returned (no greedy reorder).")
     args = parser.parse_args(argv)
 
-    if not args.map_uuid:
-        parser.error("--map-uuid required (or set $ONAV_MAP_ID)")
-
     if args.dry_run:
-        print(f"[dry-run] would visit every node on map {args.map_uuid}")
+        print(f"[dry-run] would visit every node on selected map")
         print(f"[dry-run] action: {args.namespace}/autonomy/goto, mode={'naive' if args.naive else 'greedy'}")
         return
 
     rclpy.init()
-    node = TraverseShortest(args.namespace, args.map_uuid, args.naive)
+    node = TraverseShortest(args.namespace, args.naive)
     try:
         node.wait_for_inputs()
+        node.map_uuid, _ = select_map(node, node.maps_client, args.map_uuid or "")
         node.run()
     except KeyboardInterrupt:
         node.cancel_in_flight()

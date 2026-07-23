@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Fire random GoTo destinations inside a map's bounding box.
 
-  ./random_visit_mission.py --map-uuid <uuid> --count 10
+  ./random_visit_mission.py
   ./random_visit_mission.py --count 0 --seed 42        # infinite, deterministic
-  ONAV_MAP_ID=<uuid> ./random_visit_mission.py
+  ./random_visit_mission.py --map-uuid <uuid>           # skip the map menu
 
 Uses ExecuteGoTo (free GPS pose), not GoToPOI - targets are random points in
 the map bbox; autonomy rejects whatever it can't reach.
@@ -28,13 +28,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
-from clearpath_mission_manager_msgs.srv import GetMap
+from clearpath_mission_manager_msgs.srv import GetMap, GetAllMaps
 from clearpath_navigation_msgs.msg import Waypoint
 from clearpath_navigation_msgs.action import ExecuteGoTo
 
 from examples.common.argparse_base import make_parser
 from examples.common.config import map_id as default_map_id
 from examples.common.ros_helpers import wait_for_service, wait_for_action, call_service
+from examples.common.onav import select_map
 
 
 POSITION_TOLERANCE_M = 1.0
@@ -56,20 +57,23 @@ def haversine_m(a, b):
 
 
 class RandomVisit(Node):
-    def __init__(self, namespace: str, map_uuid: str, count: int, seed: int | None):
+    def __init__(self, namespace: str, count: int, seed: int | None):
         super().__init__("random_visit")
-        self.map_uuid = map_uuid
+        self.map_uuid = ""
         self.count = count
         self.rng = random.Random(seed)
         self.get_map_srv = f"{namespace}/mission_manager/get_map"
+        self.maps_srv = f"{namespace}/mission_manager/get_all_maps"
         self.goto_action = f"{namespace}/autonomy/goto"
         self.get_map_client = self.create_client(GetMap, self.get_map_srv)
+        self.maps_client = self.create_client(GetAllMaps, self.maps_srv)
         self.goto_client = ActionClient(self, ExecuteGoTo, self.goto_action)
         self._goal_handle = None
         self.bbox = None
 
     def wait(self) -> None:
         wait_for_service(self, self.get_map_client, self.get_map_srv)
+        wait_for_service(self, self.maps_client, self.maps_srv)
         wait_for_action(self, self.goto_client, self.goto_action)
 
     def fetch_bbox(self) -> None:
@@ -145,18 +149,16 @@ def main(argv=None):
     parser.add_argument("--seed", type=int, default=None, help="RNG seed.")
     args = parser.parse_args(argv)
 
-    if not args.map_uuid:
-        parser.error("--map-uuid required (or set $ONAV_MAP_ID)")
-
     if args.dry_run:
         print(f"[dry-run] would fetch bbox via {args.namespace}/mission_manager/get_map")
         print(f"[dry-run] would fire {args.count or '∞'} GoTo goals to random bbox points")
         return
 
     rclpy.init()
-    node = RandomVisit(args.namespace, args.map_uuid, args.count, args.seed)
+    node = RandomVisit(args.namespace, args.count, args.seed)
     try:
         node.wait()
+        node.map_uuid, _ = select_map(node, node.maps_client, args.map_uuid or "")
         node.run()
     except KeyboardInterrupt:
         node.cancel_in_flight()

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Loop a mission indefinitely, docking to charge when battery is low.
 
-  ./loop_mission_dock_charge.py --dock-name charging_dock --mission-uuid <uuid> --map-uuid <uuid>
-  ./loop_mission_dock_charge.py --dock-name charging_dock --dock-threshold 20 --resume-threshold 80
+  ./loop_mission_dock_charge.py
+  ./loop_mission_dock_charge.py --dock-threshold 20 --resume-threshold 80
+  ./loop_mission_dock_charge.py --dock-name charging_dock --map-uuid <uuid> --mission-uuid <uuid>
 
 When battery drops below --dock-threshold the robot docks and waits. Once the
 battery reaches --resume-threshold it undocks and resumes looping. Runs forever
@@ -29,19 +30,19 @@ from clearpath_navigation_msgs.action import ExecuteMission
 from clearpath_dock_msgs.action import Dock, Undock
 
 from clearpath_mission_manager_msgs.srv import GetAllMaps, GetAllNetworkMissions
+from clearpath_dock_msgs.srv import GetDockDatabase
 
 from examples.common.argparse_base import make_parser
 from examples.common.config import map_id as default_map_id, mission_id as default_mission_id
 from examples.common.ros_helpers import wait_for_action, wait_for_service
-from examples.common.onav import select_map, select_mission
+from examples.common.onav import select_map, select_mission, select_dock
 
 
 class MissionWithCharging(Node):
-    def __init__(self, namespace: str, dock_name: str,
-                 dock_threshold: float, resume_threshold: float,
+    def __init__(self, namespace: str, dock_threshold: float, resume_threshold: float,
                  max_loops: int):
         super().__init__("loop_mission_dock_charge")
-        self.dock_name = dock_name
+        self.dock_name = ""
         self.dock_threshold = dock_threshold
         self.resume_threshold = resume_threshold
         self.max_loops = max_loops
@@ -55,6 +56,7 @@ class MissionWithCharging(Node):
         self.undock_action_path = f"{namespace}/autonomy/undock"
         self.maps_srv = f"{namespace}/mission_manager/get_all_maps"
         self.missions_srv = f"{namespace}/mission_manager/get_all_network_missions"
+        self.dock_db_srv = f"{namespace}/docking/get_dock_database"
 
         self.create_subscription(BatteryState, f"{namespace}/platform/bms/state", self._bms_cb, 10)
         self.mission_client = ActionClient(self, ExecuteMission, self.mission_action)
@@ -62,6 +64,7 @@ class MissionWithCharging(Node):
         self.undock_client = ActionClient(self, Undock, self.undock_action_path)
         self.maps_client = self.create_client(GetAllMaps, self.maps_srv)
         self.missions_client = self.create_client(GetAllNetworkMissions, self.missions_srv)
+        self.dock_db_client = self.create_client(GetDockDatabase, self.dock_db_srv)
 
     def _bms_cb(self, msg: BatteryState) -> None:
         self.latest_percent = float(msg.percentage) * 100.0
@@ -72,6 +75,7 @@ class MissionWithCharging(Node):
         wait_for_action(self, self.undock_client, self.undock_action_path)
         wait_for_service(self, self.maps_client, self.maps_srv)
         wait_for_service(self, self.missions_client, self.missions_srv)
+        wait_for_service(self, self.dock_db_client, self.dock_db_srv)
         self.get_logger().info("waiting for first BMS reading …")
         while self.latest_percent is None:
             rclpy.spin_once(self, timeout_sec=1.0)
@@ -158,8 +162,8 @@ class MissionWithCharging(Node):
 
 def main(argv=None):
     parser = make_parser(doc=__doc__)
-    parser.add_argument("--dock-name", required=True,
-                        help="Dock to charge at (must exist in the database).")
+    parser.add_argument("--dock-name", default=None,
+                        help="Dock to charge at. Omit for interactive menu.")
     parser.add_argument("--dock-threshold", type=float, default=20.0,
                         help="Dock when battery drops below this percent (default 20).")
     parser.add_argument("--resume-threshold", type=float, default=80.0,
@@ -183,7 +187,7 @@ def main(argv=None):
 
     rclpy.init()
     node = MissionWithCharging(
-        args.namespace, args.dock_name,
+        args.namespace,
         args.dock_threshold, args.resume_threshold,
         args.loops,
     )
@@ -191,6 +195,7 @@ def main(argv=None):
         node.wait_for_initial()
         node.map_uuid, _ = select_map(node, node.maps_client, args.map_uuid or "")
         node.mission_uuid, _ = select_mission(node, node.missions_client, args.mission_uuid or "")
+        node.dock_name = select_dock(node, node.dock_db_client, args.dock_name or "")
         node.loop()
     except KeyboardInterrupt:
         node.cancel_in_flight()

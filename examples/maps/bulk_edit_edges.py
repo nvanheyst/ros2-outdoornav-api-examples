@@ -5,11 +5,9 @@ This is the slow-zone + bulk-path-radius tool. `--speed` sets the edge
 speed limit (slow zone); `--path-radius` sets the edge path radius
 (corridor widening / tightening). Either or both can be applied.
 
-  ./bulk_edit_edges.py <map_uuid> <lat> <lon> <radius_m> --speed 0.5
-  ./bulk_edit_edges.py <map_uuid> <lat> <lon> <radius_m> --path-radius 0.8
-  ./bulk_edit_edges.py <map_uuid> <lat> <lon> 15 --speed 0.5 --path-radius 0.8 \
-      --clone "test_map_slow_near_well"
-  ./bulk_edit_edges.py <map_uuid> --around-me 15 --speed 0.3   # zone centred on robot
+  ./bulk_edit_edges.py --around-me 15
+  ./bulk_edit_edges.py <lat> <lon> <radius_m>
+  ./bulk_edit_edges.py <lat> <lon> <radius_m> --speed 0.5 --path-radius 0.8 --map-uuid <uuid>
 
 An edge is "in the zone" if either endpoint is within radius_m of the
 centre. With `--clone`, the source map is copied first and edits land on
@@ -40,9 +38,12 @@ from rclpy.node import Node
 from sensor_msgs.msg import NavSatFix
 from clearpath_mission_manager_msgs.srv import GetMap, CloneMap, UpdateMapEdges
 
+from clearpath_mission_manager_msgs.srv import GetAllMaps
+
 from examples.common.argparse_base import make_parser
 from examples.common.config import map_id as default_map_id
 from examples.common.ros_helpers import wait_for_service, call_service
+from examples.common.onav import select_map
 
 
 EARTH_R = 6_371_000.0
@@ -62,15 +63,18 @@ class BulkEdit(Node):
         self.ns = namespace
         self.fix_topic = f"{namespace}/localization/fix"
         self.get_map_srv = f"{namespace}/mission_manager/get_map"
+        self.maps_srv = f"{namespace}/mission_manager/get_all_maps"
         self.clone_srv = f"{namespace}/mission_manager/clone_map"
         self.update_srv = f"{namespace}/mission_manager/update_map_edges"
         self.get_map_client = self.create_client(GetMap, self.get_map_srv)
+        self.maps_client = self.create_client(GetAllMaps, self.maps_srv)
         self.clone_client = self.create_client(CloneMap, self.clone_srv)
         self.update_client = self.create_client(UpdateMapEdges, self.update_srv)
         self._latest_fix = None
 
     def wait(self, need_clone: bool) -> None:
         wait_for_service(self, self.get_map_client, self.get_map_srv)
+        wait_for_service(self, self.maps_client, self.maps_srv)
         wait_for_service(self, self.update_client, self.update_srv)
         if need_clone:
             wait_for_service(self, self.clone_client, self.clone_srv)
@@ -122,43 +126,71 @@ def edges_in_zone(map_msg, center, radius_m):
     return matches
 
 
+def _prompt_float(prompt: str) -> float:
+    while True:
+        raw = input(prompt).strip()
+        try:
+            return float(raw)
+        except ValueError:
+            print("  enter a number")
+
+
 def main(argv=None):
     parser = make_parser(doc=__doc__)
-    parser.add_argument("map_uuid", nargs="?", default=default_map_id() or None,
-                        help="Map UUID (or $ONAV_MAP_ID).")
+    parser.add_argument("--map-uuid", default=default_map_id() or None,
+                        help="Map UUID (or $ONAV_MAP_ID). Omit for interactive menu.")
     parser.add_argument("lat", type=float, nargs="?",
                         help="Zone centre latitude (omit with --around-me).")
     parser.add_argument("lon", type=float, nargs="?",
                         help="Zone centre longitude (omit with --around-me).")
-    parser.add_argument("radius_m", type=float, help="Zone radius in metres.")
+    parser.add_argument("radius_m", type=float, nargs="?",
+                        help="Zone radius in metres.")
     parser.add_argument("--around-me", action="store_true",
                         help="Use the robot's current GPS fix as the centre (ignores lat/lon args).")
-    parser.add_argument("--speed", type=float, default=-1.0,
-                        help="New edge speed limit (negative = unchanged).")
-    parser.add_argument("--path-radius", type=float, default=-1.0,
-                        help="New edge path radius (negative = unchanged).")
+    parser.add_argument("--speed", type=float, default=None,
+                        help="New edge speed limit m/s. Omit for interactive prompt.")
+    parser.add_argument("--path-radius", type=float, default=None,
+                        help="New edge path radius m. Omit for interactive prompt.")
     parser.add_argument("--clone", default=None,
                         help="If set, clone the map under this name and edit the clone.")
     args = parser.parse_args(argv)
 
-    if not args.map_uuid:
-        parser.error("map_uuid is required (positional or via $ONAV_MAP_ID)")
     if not args.around_me and (args.lat is None or args.lon is None):
         parser.error("lat and lon required (or pass --around-me)")
-    if args.speed < 0 and args.path_radius < 0 and not args.dry_run:
-        parser.error("Need at least one of --speed / --path-radius (or --dry-run).")
+    if args.radius_m is None:
+        parser.error("radius_m is required")
 
     rclpy.init()
     node = BulkEdit(args.namespace)
     try:
         node.wait(need_clone=args.clone is not None)
+
+        map_uuid, _ = select_map(node, node.maps_client, args.map_uuid or "")
+
         if args.around_me:
             lat, lon = node.fetch_fix()
             node.get_logger().info(f"centring on robot fix ({lat:.6f}, {lon:.6f})")
         else:
             lat, lon = args.lat, args.lon
 
-        m = node.fetch_map(args.map_uuid)
+        # Interactive speed/radius prompt if not provided as flags
+        speed = args.speed if args.speed is not None else -1.0
+        path_radius = args.path_radius if args.path_radius is not None else -1.0
+        if speed < 0 and path_radius < 0 and not args.dry_run:
+            print("\nWhat would you like to update?")
+            print("  1. Speed limit")
+            print("  2. Path radius")
+            print("  3. Both")
+            choice = input("Select [1-3]: ").strip()
+            if choice in ("1", "3"):
+                speed = _prompt_float("  Speed limit (m/s): ")
+            if choice in ("2", "3"):
+                path_radius = _prompt_float("  Path radius (m): ")
+            if speed < 0 and path_radius < 0:
+                print("nothing selected — exiting")
+                return
+
+        m = node.fetch_map(map_uuid)
         node.get_logger().info(
             f"source map {m.name!r}: {len(m.points)} pts, {len(m.connections)} edges"
         )
@@ -170,18 +202,18 @@ def main(argv=None):
         if args.dry_run or not target_edges:
             return
 
-        target_uuid = args.map_uuid
+        target_uuid = map_uuid
         if args.clone:
-            target_uuid = node.clone(args.map_uuid, args.clone)
+            target_uuid = node.clone(map_uuid, args.clone)
             node.get_logger().info(f"cloned to {args.clone!r} ({target_uuid})")
             m = node.fetch_map(target_uuid)
             target_edges = edges_in_zone(m, (lat, lon), args.radius_m)
 
-        node.update(target_uuid, target_edges, args.speed, args.path_radius)
+        node.update(target_uuid, target_edges, speed, path_radius)
         node.get_logger().info(
             f"updated {len(target_edges)} edges"
-            f"{f' speed={args.speed:.2f} m/s' if args.speed >= 0 else ''}"
-            f"{f' radius={args.path_radius:.2f} m' if args.path_radius >= 0 else ''}"
+            f"{f' speed={speed:.2f} m/s' if speed >= 0 else ''}"
+            f"{f' radius={path_radius:.2f} m' if path_radius >= 0 else ''}"
         )
     finally:
         node.destroy_node()

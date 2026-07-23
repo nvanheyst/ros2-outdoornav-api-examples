@@ -5,10 +5,10 @@ NetworkMissions reference Waypoints (not raw map points), so this calls
 CreateNetworkMission then CreateWaypoint(..., assign_to=[mission_uuid]) for
 each point.
 
-  ./generate_traversal_mission.py --map-uuid <uuid>
-  ./generate_traversal_mission.py --map-uuid <uuid> --run
-  ./generate_traversal_mission.py --map-uuid <uuid> --name foo --tolerance 1.5
-  ONAV_MAP_ID=<uuid> ./generate_traversal_mission.py
+  ./generate_traversal_mission.py
+  ./generate_traversal_mission.py --run
+  ./generate_traversal_mission.py --name foo --tolerance 1.5
+  ./generate_traversal_mission.py --map-uuid <uuid>   # skip the map menu
 
 Chain map (all node degrees ≤ 2) walks from a degree-1 endpoint. Mesh maps
 use a least-turn graph walk over the connection graph.
@@ -36,12 +36,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
-from clearpath_mission_manager_msgs.srv import GetMap, CreateNetworkMission, CreateWaypoint
+from clearpath_mission_manager_msgs.srv import GetMap, GetAllMaps, CreateNetworkMission, CreateWaypoint
 from clearpath_navigation_msgs.action import ExecuteMission
 
 from examples.common.argparse_base import make_parser
 from examples.common.config import map_id as default_map_id
 from examples.common.ros_helpers import wait_for_service, wait_for_action, call_service
+from examples.common.onav import select_map
 
 
 DEFAULT_POSITION_TOLERANCE_M = 1.0
@@ -130,18 +131,20 @@ def order_graph_walk(points, connections) -> list[int]:
 
 
 class TraversalMission(Node):
-    def __init__(self, namespace: str, map_uuid: str, mission_name: str, do_run: bool,
+    def __init__(self, namespace: str, mission_name: str, do_run: bool,
                  position_tolerance: float):
         super().__init__("generate_traversal_mission")
-        self.map_uuid = map_uuid
+        self.map_uuid = ""
         self.mission_name = mission_name
         self.do_run = do_run
         self.position_tolerance = position_tolerance
         self.get_map_srv = f"{namespace}/mission_manager/get_map"
+        self.maps_srv = f"{namespace}/mission_manager/get_all_maps"
         self.create_mission_srv = f"{namespace}/mission_manager/create_mission"
         self.create_waypoint_srv = f"{namespace}/mission_manager/create_waypoint"
         self.mission_action = f"{namespace}/autonomy/mission"
         self.get_map_client = self.create_client(GetMap, self.get_map_srv)
+        self.maps_client = self.create_client(GetAllMaps, self.maps_srv)
         self.create_mission_client = self.create_client(CreateNetworkMission, self.create_mission_srv)
         self.create_waypoint_client = self.create_client(CreateWaypoint, self.create_waypoint_srv)
         self.execute_client = ActionClient(self, ExecuteMission, self.mission_action) if do_run else None
@@ -149,6 +152,7 @@ class TraversalMission(Node):
 
     def wait(self) -> None:
         wait_for_service(self, self.get_map_client, self.get_map_srv)
+        wait_for_service(self, self.maps_client, self.maps_srv)
         wait_for_service(self, self.create_mission_client, self.create_mission_srv)
         wait_for_service(self, self.create_waypoint_client, self.create_waypoint_srv)
         if self.execute_client:
@@ -256,21 +260,20 @@ def main(argv=None):
                         help="Also fire ExecuteMission after creating the mission.")
     args = parser.parse_args(argv)
 
-    if not args.map_uuid:
-        parser.error("--map-uuid required (or set $ONAV_MAP_ID)")
-    name = args.name or f"traversal_{args.map_uuid[:8]}"
-
     if args.dry_run:
-        print(f"[dry-run] would build traversal mission {name!r} over map {args.map_uuid}")
+        print(f"[dry-run] would build traversal mission over selected map")
         print(f"[dry-run] services: get_map, create_mission, create_waypoint under {args.namespace}/mission_manager/")
         if args.run:
             print(f"[dry-run] would then fire ExecuteMission on {args.namespace}/autonomy/mission")
         return
 
     rclpy.init()
-    node = TraversalMission(args.namespace, args.map_uuid, name, args.run, args.tolerance)
+    node = TraversalMission(args.namespace, args.name or "", args.run, args.tolerance)
     try:
         node.wait()
+        node.map_uuid, map_name = select_map(node, node.maps_client, args.map_uuid or "")
+        if not node.mission_name:
+            node.mission_name = f"traversal_{map_name}"
         node.run()
     except KeyboardInterrupt:
         node.cancel_in_flight()
