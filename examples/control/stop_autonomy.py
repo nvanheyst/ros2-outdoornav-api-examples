@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Hard-stop the autonomy stack via /autonomy/stop (Trigger).
 
-  ./stop_autonomy.py                # call /autonomy/stop once
-  ./stop_autonomy.py --dry-run      # print the call without executing
+  ./stop_autonomy.py
+  ./stop_autonomy.py --dry-run
 
-This calls the Trigger service that aborts whatever the autonomy stack is
+Calls the Trigger service that aborts whatever the autonomy stack is
 doing - mission, goto, replan. Robot brakes; mission action returns aborted.
 
 Touches: service <namespace>/autonomy/stop (std_srvs/Trigger).
@@ -33,7 +33,7 @@ class StopAutonomy(Node):
     def wait(self) -> None:
         wait_for_service(self, self.client, self.srv)
 
-    def stop(self) -> bool:
+    def cancel(self) -> bool:
         resp = call_service(self, self.client, Trigger.Request())
         ok = bool(resp and resp.success)
         self.get_logger().info(f"{self.srv}: {'OK' if ok else 'FAILED'}  {getattr(resp, 'message', '')}")
@@ -52,7 +52,7 @@ def main(argv=None):
     node = StopAutonomy(args.namespace)
     try:
         node.wait()
-        node.stop()
+        node.cancel()
     finally:
         node.destroy_node()
         rclpy.shutdown()

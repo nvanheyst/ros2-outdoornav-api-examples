@@ -2,6 +2,7 @@
 """Loop a mission until battery drops below threshold or max loops hit.
 
   ./loop_mission_battery_aware.py --threshold 30 --loops 5
+  ./loop_mission_battery_aware.py --threshold 30 --loops 0   # run forever
   ONAV_MAP_ID=<uuid> ONAV_MISSION_ID=<uuid> ./loop_mission_battery_aware.py
 
 Spins the executor manually while the mission action is in flight so the BMS
@@ -78,12 +79,15 @@ class BatteryAwareLoop(Node):
         rclpy.spin_until_future_complete(self, cancel_future)
 
     def loop(self) -> None:
-        for i in range(1, self.max_loops + 1):
+        limit = "∞" if self.max_loops == 0 else str(self.max_loops)
+        i = 0
+        while self.max_loops == 0 or i < self.max_loops:
+            i += 1
             rclpy.spin_once(self, timeout_sec=0.1)
             rclpy.spin_once(self, timeout_sec=0.1)
             pct = self.latest_percent
             self.get_logger().info(
-                f"loop {i}/{self.max_loops}  battery={pct:.1f}%  threshold={self.threshold:.1f}%"
+                f"loop {i}/{limit}  battery={pct:.1f}%  threshold={self.threshold:.1f}%"
             )
             if pct < self.threshold:
                 self.get_logger().warn(
@@ -102,7 +106,7 @@ def main(argv=None):
     parser.add_argument("--threshold", type=float, default=30.0,
                         help="Stop when battery drops below this percent (default 30).")
     parser.add_argument("--loops", type=int, default=10,
-                        help="Maximum loop count (default 10).")
+                        help="Maximum loop count (default 10). Use 0 for infinite.")
     parser.add_argument("--mission-uuid", default=default_mission_id() or None,
                         help="Mission UUID (or $ONAV_MISSION_ID).")
     parser.add_argument("--map-uuid", default=default_map_id() or None,
