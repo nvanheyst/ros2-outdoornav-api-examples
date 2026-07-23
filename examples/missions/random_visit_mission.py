@@ -8,6 +8,9 @@
 Uses ExecuteGoTo (free GPS pose), not GoToPOI - targets are random points in
 the map bbox; autonomy rejects whatever it can't reach.
 
+CAUTION: targets are random GPS points with no awareness of your map's edges,
+known obstacles, or dock location. Run only in an open area clear of hazards.
+
 Touches:
   service <namespace>/mission_manager/get_map  (GetMap)
   action  <namespace>/autonomy/goto            (ExecuteGoTo)

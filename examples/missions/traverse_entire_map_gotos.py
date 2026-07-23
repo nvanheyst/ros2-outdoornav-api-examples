@@ -8,6 +8,11 @@
 Map nodes aren't POIs, so this uses ExecuteGoTo with a synthetic
 Waypoint per node rather than ExecuteGoToPOI.
 
+CAUTION: the robot navigates between nodes via free GPS paths, ignoring map
+edges and known obstacles. Make sure the area between nodes is clear before
+running, and keep the dock well outside the map bounding box or the robot
+may attempt to drive through it.
+
 Compare with `generate_traversal_mission.py`: that one builds a
 persistent NetworkMission + Waypoints (stored, UI-visible, re-runnable)
 and the robot follows map edges. This one is the ephemeral version:

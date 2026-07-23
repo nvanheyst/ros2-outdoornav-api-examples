@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Run a mission and, on abort, retry it from the last in-flight waypoint.
+"""Run a mission and resume from the last waypoint if it aborts.
 
-  ./recover_from_abort.py                              # 3 retries by default
-  ./recover_from_abort.py --max-retries 5 --backoff 10
-  ONAV_MAP_ID=<u> ONAV_MISSION_ID=<u> ./recover_from_abort.py
+  ./mission_with_resume.py                             # 3 retries by default
+  ./mission_with_resume.py --max-retries 5 --backoff 10
+  ONAV_MAP_ID=<u> ONAV_MISSION_ID=<u> ./mission_with_resume.py
 
 How it works:
   1. Subscribes to `<ns>/navigation/current_goal_id` (the platform's running
@@ -45,9 +45,12 @@ from std_msgs.msg import String
 from clearpath_navigation_msgs.action import ExecuteMission, ExecuteMissionFromGoal
 from clearpath_navigation_msgs.msg import MapGoalState
 
+from clearpath_mission_manager_msgs.srv import GetAllMaps, GetAllNetworkMissions
+
 from examples.common.argparse_base import make_parser
 from examples.common.config import map_id as default_map_id, mission_id as default_mission_id
-from examples.common.ros_helpers import wait_for_action
+from examples.common.ros_helpers import wait_for_action, wait_for_service
+from examples.common.onav import select_map, select_mission
 
 
 STATE_NAMES = {
@@ -65,18 +68,22 @@ RESULT_CODE_NAMES = {
 }
 
 
-class RecoverFromAbort(Node):
-    def __init__(self, namespace: str, mission_uuid: str, map_uuid: str):
-        super().__init__("recover_from_abort")
+class MissionWithResume(Node):
+    def __init__(self, namespace: str):
+        super().__init__("mission_with_resume")
         self.namespace = namespace
-        self.mission_uuid = mission_uuid
-        self.map_uuid = map_uuid
+        self.mission_uuid = ""
+        self.map_uuid = ""
         self._current_goal_id = ""
 
         self.mission_action = f"{namespace}/autonomy/mission"
         self.resume_action = f"{namespace}/autonomy/mission_from_goal"
+        self.maps_srv = f"{namespace}/mission_manager/get_all_maps"
+        self.missions_srv = f"{namespace}/mission_manager/get_all_network_missions"
         self.mission_client = ActionClient(self, ExecuteMission, self.mission_action)
         self.resume_client = ActionClient(self, ExecuteMissionFromGoal, self.resume_action)
+        self.maps_client = self.create_client(GetAllMaps, self.maps_srv)
+        self.missions_client = self.create_client(GetAllNetworkMissions, self.missions_srv)
 
         self.create_subscription(String, f"{namespace}/navigation/current_goal_id",
                                  self._goal_id_cb, 10)
@@ -88,6 +95,8 @@ class RecoverFromAbort(Node):
     def wait(self) -> None:
         wait_for_action(self, self.mission_client, self.mission_action)
         wait_for_action(self, self.resume_client, self.resume_action)
+        wait_for_service(self, self.maps_client, self.maps_srv)
+        wait_for_service(self, self.missions_client, self.missions_srv)
 
     def _send_mission(self):
         goal = ExecuteMission.Goal(mission_uuid=self.mission_uuid, map_uuid=self.map_uuid)
@@ -180,19 +189,19 @@ def main(argv=None):
                         help="Seconds to wait between retries (default 5).")
     args = parser.parse_args(argv)
 
-    if not args.mission_uuid or not args.map_uuid:
-        parser.error("--mission-uuid and --map-uuid required (or set $ONAV_MISSION_ID and $ONAV_MAP_ID)")
-
     if args.dry_run:
         print(f"[dry-run] would run ExecuteMission on {args.namespace}/autonomy/mission")
         print(f"[dry-run] on abort, would call ExecuteMissionFromGoal up to {args.max_retries}x")
         print(f"[dry-run] backoff between retries: {args.backoff} s")
+        print(f"[dry-run] map/mission: {'provided' if args.map_uuid and args.mission_uuid else 'interactive menu'}")
         return
 
     rclpy.init()
-    node = RecoverFromAbort(args.namespace, args.mission_uuid, args.map_uuid)
+    node = MissionWithResume(args.namespace)
     try:
         node.wait()
+        node.map_uuid, _ = select_map(node, node.maps_client, args.map_uuid or "")
+        node.mission_uuid, _ = select_mission(node, node.missions_client, args.mission_uuid or "")
         node.run(max_retries=args.max_retries, backoff_sec=args.backoff)
     except KeyboardInterrupt:
         node.get_logger().warn("interrupted")

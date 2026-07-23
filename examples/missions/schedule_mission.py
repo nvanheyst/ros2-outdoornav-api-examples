@@ -26,9 +26,12 @@ from rclpy.node import Node
 from rclpy.action import ActionClient
 from clearpath_navigation_msgs.action import ExecuteMission
 
+from clearpath_mission_manager_msgs.srv import GetAllMaps, GetAllNetworkMissions
+
 from examples.common.argparse_base import make_parser
 from examples.common.config import map_id as default_map_id, mission_id as default_mission_id
-from examples.common.ros_helpers import wait_for_action
+from examples.common.ros_helpers import wait_for_action, wait_for_service
+from examples.common.onav import select_map, select_mission
 
 
 HEARTBEAT_S = 5.0
@@ -45,18 +48,23 @@ def parse_target(arg: str) -> datetime:
 
 
 class ScheduledMission(Node):
-    def __init__(self, namespace: str, target: datetime,
-                 mission_uuid: str, map_uuid: str):
+    def __init__(self, namespace: str, target: datetime):
         super().__init__("scheduled_mission")
         self.target = target
-        self.mission_uuid = mission_uuid
-        self.map_uuid = map_uuid
+        self.mission_uuid = ""
+        self.map_uuid = ""
         self.mission_action = f"{namespace}/autonomy/mission"
+        self.maps_srv = f"{namespace}/mission_manager/get_all_maps"
+        self.missions_srv = f"{namespace}/mission_manager/get_all_network_missions"
         self.mission_client = ActionClient(self, ExecuteMission, self.mission_action)
+        self.maps_client = self.create_client(GetAllMaps, self.maps_srv)
+        self.missions_client = self.create_client(GetAllNetworkMissions, self.missions_srv)
         self._goal_handle = None
 
     def wait_for_server(self) -> None:
         wait_for_action(self, self.mission_client, self.mission_action)
+        wait_for_service(self, self.maps_client, self.maps_srv)
+        wait_for_service(self, self.missions_client, self.missions_srv)
 
     def countdown(self) -> None:
         while True:
@@ -106,19 +114,18 @@ def main(argv=None):
     target = parse_target(args.when)
     if target <= datetime.now(timezone.utc):
         parser.error("target time is in the past")
-    if not args.mission_uuid or not args.map_uuid:
-        parser.error("--mission-uuid and --map-uuid required (or set $ONAV_MISSION_ID and $ONAV_MAP_ID)")
-
     if args.dry_run:
         print(f"[dry-run] would wait until {target.isoformat()} then fire ExecuteMission")
         print(f"[dry-run] action={args.namespace}/autonomy/mission")
-        print(f"[dry-run] mission={args.mission_uuid} map={args.map_uuid}")
+        print(f"[dry-run] map/mission: {'provided' if args.map_uuid and args.mission_uuid else 'interactive menu'}")
         return
 
     rclpy.init()
-    node = ScheduledMission(args.namespace, target, args.mission_uuid, args.map_uuid)
+    node = ScheduledMission(args.namespace, target)
     try:
         node.wait_for_server()
+        node.map_uuid, _ = select_map(node, node.maps_client, args.map_uuid or "")
+        node.mission_uuid, _ = select_mission(node, node.missions_client, args.mission_uuid or "")
         node.countdown()
         node.fire()
     except KeyboardInterrupt:
