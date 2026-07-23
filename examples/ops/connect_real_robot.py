@@ -75,6 +75,17 @@ def main(argv=None):
                 "you're on the robot (or bridged). See docker/real-amp.env.")
             return 1
 
+        # Namespace resolved (possibly from env var) before discovery fully populated.
+        # Keep spinning until the anchor topics appear or the deadline expires.
+        node.get_logger().info(f"namespace: {ns} — waiting for graph to populate …")
+        while rclpy.ok():
+            rclpy.spin_once(node, timeout_sec=0.5)
+            topics_now = {t for t, _ in node.get_topic_names_and_types()}
+            if f"{ns}/localization/fix" in topics_now or f"{ns}/platform/bms/state" in topics_now:
+                break
+            if node.get_clock().now().nanoseconds * 1e-9 > deadline:
+                break
+
         topics = {t for t, _ in node.get_topic_names_and_types()}
         n_nodes = len(node.get_node_names_and_namespaces())
         have_fix = f"{ns}/localization/fix" in topics
