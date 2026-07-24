@@ -1,30 +1,35 @@
 #!/usr/bin/env python3
-"""Run a mission while the OutdoorNav logger and front camera are both recording.
+"""Run a mission with optional log and camera recording.
 
-  ./mission_with_recording.py
-  ./mission_with_recording.py --camera oak_d_pro_w_rear   # use rear camera instead
-  ./mission_with_recording.py --skip-mission              # test recording plumbing only
-  ./mission_with_recording.py --mission-uuid <u> --map-uuid <u>   # skip menus
+  ./run_mission.py                        # pick map + mission interactively, then prompted for log/video
+  ./run_mission.py --log --video          # start both without prompting
+  ./run_mission.py --no-log --no-video    # mission only, no extras
+  ./run_mission.py --skip-mission         # test log/video plumbing only (5 s sleep)
 
-Sequence:
+When prompted, both log and video default to No — press Enter to skip or 'y' to enable.
+
+If log is enabled:
   1. log_manager/start_recording  (Trigger) — opens an EventLog in the UI
-  2. <camera>/start_recording     (StartRecording action) — begins video to disk
-  3. autonomy/mission             (ExecuteMission) — runs the mission
-  4. <camera>/stop_recording      (StopRecording action) — finalises the video file
   5. log_manager/stop_recording   (Trigger) — closes the log
 
-Both recordings stop in the finally block, so Ctrl-C or a rejected mission goal
+If video is enabled:
+  2. <camera>/start_recording     (StartRecording action) — begins video to disk
+  4. <camera>/stop_recording      (StopRecording action) — finalises the file at
+     /opt/onav/saved_files/media/<camera>/
+
+Recordings stop in the finally block, so Ctrl-C or a rejected mission goal
 still closes them cleanly.
 
 Touches:
-  service <namespace>/log_manager/start_recording         (std_srvs/Trigger)
-  service <namespace>/log_manager/stop_recording          (std_srvs/Trigger)
-  action  <namespace>/<camera>/start_recording            (video_recorder_msgs/StartRecording)
-  action  <namespace>/<camera>/stop_recording             (video_recorder_msgs/StopRecording)
   action  <namespace>/autonomy/mission                    (ExecuteMission)
+  service <namespace>/log_manager/start_recording         (std_srvs/Trigger, if log)
+  service <namespace>/log_manager/stop_recording          (std_srvs/Trigger, if log)
+  action  <namespace>/<camera>/start_recording            (video_recorder_msgs/StartRecording, if video)
+  action  <namespace>/<camera>/stop_recording             (video_recorder_msgs/StopRecording, if video)
 """
 
 from __future__ import annotations
+import argparse
 import sys
 import time
 from pathlib import Path
@@ -36,8 +41,6 @@ from rclpy.node import Node
 from rclpy.action import ActionClient
 from std_srvs.srv import Trigger
 from clearpath_navigation_msgs.action import ExecuteMission
-from video_recorder_msgs.action import StartRecording, StopRecording
-
 from clearpath_mission_manager_msgs.srv import GetAllMaps, GetAllNetworkMissions
 
 from examples.common.argparse_base import make_parser
@@ -48,41 +51,65 @@ from examples.common.onav import select_map, select_mission
 DEFAULT_CAMERA = "oak_d_pro_w_front"
 
 
-class MissionWithRecording(Node):
-    def __init__(self, namespace: str, camera: str, skip_mission: bool):
-        super().__init__("mission_with_recording")
+class RunMission(Node):
+    def __init__(self, namespace: str, camera: str, skip_mission: bool,
+                 use_log: bool, use_video: bool):
+        super().__init__("run_mission")
         self.mission_uuid = ""
         self.map_uuid = ""
         self.skip_mission = skip_mission
-        self.log_start_srv = f"{namespace}/log_manager/start_recording"
-        self.log_stop_srv = f"{namespace}/log_manager/stop_recording"
-        self.vid_start_action = f"{namespace}/{camera}/start_recording"
-        self.vid_stop_action = f"{namespace}/{camera}/stop_recording"
+        self.use_log = use_log
+        self.use_video = use_video
+        self._mission_handle = None
+        self._video_started = False
+
         self.mission_action = f"{namespace}/autonomy/mission"
         self.maps_srv = f"{namespace}/mission_manager/get_all_maps"
         self.missions_srv = f"{namespace}/mission_manager/get_all_network_missions"
 
-        self.log_start_client = self.create_client(Trigger, self.log_start_srv)
-        self.log_stop_client = self.create_client(Trigger, self.log_stop_srv)
-        self.vid_start_client = ActionClient(self, StartRecording, self.vid_start_action)
-        self.vid_stop_client = ActionClient(self, StopRecording, self.vid_stop_action)
-        self.mission_client = ActionClient(self, ExecuteMission, self.mission_action) if not skip_mission else None
-        self.maps_client = self.create_client(GetAllMaps, self.maps_srv) if not skip_mission else None
-        self.missions_client = self.create_client(GetAllNetworkMissions, self.missions_srv) if not skip_mission else None
-        self._mission_handle = None
-        self._video_started = False
+        self.mission_client = ActionClient(self, ExecuteMission, self.mission_action) \
+            if not skip_mission else None
+        self.maps_client = self.create_client(GetAllMaps, self.maps_srv) \
+            if not skip_mission else None
+        self.missions_client = self.create_client(GetAllNetworkMissions, self.missions_srv) \
+            if not skip_mission else None
+
+        self.log_start_client = self.log_stop_client = None
+        if use_log:
+            self.log_start_srv = f"{namespace}/log_manager/start_recording"
+            self.log_stop_srv = f"{namespace}/log_manager/stop_recording"
+            self.log_start_client = self.create_client(Trigger, self.log_start_srv)
+            self.log_stop_client = self.create_client(Trigger, self.log_stop_srv)
+
+        self.vid_start_client = self.vid_stop_client = None
+        if use_video:
+            try:
+                from video_recorder_msgs.action import StartRecording, StopRecording
+            except ImportError:
+                raise RuntimeError(
+                    "video_recorder_msgs not found — video recording is only available "
+                    "on the robot or a container with the full onav stack installed"
+                )
+            self._StartRecording = StartRecording
+            self._StopRecording = StopRecording
+            self.vid_start_action = f"{namespace}/{camera}/start_recording"
+            self.vid_stop_action = f"{namespace}/{camera}/stop_recording"
+            self.vid_start_client = ActionClient(self, StartRecording, self.vid_start_action)
+            self.vid_stop_client = ActionClient(self, StopRecording, self.vid_stop_action)
 
     def wait(self) -> None:
-        wait_for_service(self, self.log_start_client, self.log_start_srv)
-        wait_for_service(self, self.log_stop_client, self.log_stop_srv)
-        wait_for_action(self, self.vid_start_client, self.vid_start_action)
-        wait_for_action(self, self.vid_stop_client, self.vid_stop_action)
         if self.mission_client:
             wait_for_action(self, self.mission_client, self.mission_action)
         if self.maps_client:
             wait_for_service(self, self.maps_client, self.maps_srv)
         if self.missions_client:
             wait_for_service(self, self.missions_client, self.missions_srv)
+        if self.log_start_client:
+            wait_for_service(self, self.log_start_client, self.log_start_srv)
+            wait_for_service(self, self.log_stop_client, self.log_stop_srv)
+        if self.vid_start_client:
+            wait_for_action(self, self.vid_start_client, self.vid_start_action)
+            wait_for_action(self, self.vid_stop_client, self.vid_stop_action)
 
     def _trigger(self, client, srv_name: str) -> bool:
         resp = call_service(self, client, Trigger.Request())
@@ -98,21 +125,21 @@ class MissionWithRecording(Node):
         self._trigger(self.log_stop_client, self.log_stop_srv)
 
     def start_video(self) -> bool:
-        goal = StartRecording.Goal(filename="", duration=0)
+        goal = self._StartRecording.Goal(filename="", duration=0)
         f = self.vid_start_client.send_goal_async(goal)
         rclpy.spin_until_future_complete(self, f)
         handle = f.result()
         if not handle or not handle.accepted:
             self.get_logger().error(f"video start rejected on {self.vid_start_action}")
             return False
-        self.get_logger().info(f"video recording started")
+        self.get_logger().info("video recording started")
         self._video_started = True
         return True
 
     def stop_video(self) -> None:
         if not self._video_started:
             return
-        goal = StopRecording.Goal(arg=True)
+        goal = self._StopRecording.Goal(arg=True)
         f = self.vid_stop_client.send_goal_async(goal)
         rclpy.spin_until_future_complete(self, f)
         handle = f.result()
@@ -165,41 +192,55 @@ def main(argv=None):
                         help="Map UUID (or $ONAV_MAP_ID). Omit for interactive menu.")
     parser.add_argument("--camera", default=DEFAULT_CAMERA,
                         help=f"Camera node name for video recording (default: {DEFAULT_CAMERA}).")
+    parser.add_argument("--log", default=None, action=argparse.BooleanOptionalAction,
+                        help="Start the OutdoorNav log. Omit to be prompted.")
+    parser.add_argument("--video", default=None, action=argparse.BooleanOptionalAction,
+                        help="Record front camera video. Omit to be prompted.")
     parser.add_argument("--skip-mission", action="store_true",
-                        help="Start recordings, sleep 5 s, stop. Useful to confirm plumbing.")
+                        help="Test log/video plumbing only: start, sleep 5 s, stop.")
     args = parser.parse_args(argv)
 
     if args.dry_run:
         ns = args.namespace
-        print(f"[dry-run] start log      Trigger  {ns}/log_manager/start_recording")
-        print(f"[dry-run] start video    Action   {ns}/{args.camera}/start_recording")
-        if args.skip_mission:
-            print("[dry-run] sleep 5 s")
-        else:
-            print(f"[dry-run] run mission    Action   {ns}/autonomy/mission  (interactive select)")
-        print(f"[dry-run] stop video     Action   {ns}/{args.camera}/stop_recording")
-        print(f"[dry-run] stop log       Trigger  {ns}/log_manager/stop_recording")
+        print(f"[dry-run] select map + mission interactively (or from flags)")
+        print(f"[dry-run] prompt: start log?   → {ns}/log_manager/start_recording (Trigger)")
+        print(f"[dry-run] prompt: record video? → {ns}/{args.camera}/start_recording (StartRecording)")
+        print(f"[dry-run] run mission           → {ns}/autonomy/mission (ExecuteMission)")
         return
 
+    # Resolve log and video settings before ROS init so prompts appear right away
+    use_log = args.log
+    if use_log is None:
+        ans = input("Start log for this mission? [y/N]: ").strip().lower()
+        use_log = ans in ("y", "yes")
+
+    use_video = args.video
+    if use_video is None:
+        ans = input(f"Record {args.camera} video? [y/N]: ").strip().lower()
+        use_video = ans in ("y", "yes")
+
     rclpy.init()
-    node = MissionWithRecording(args.namespace, args.camera, args.skip_mission)
+    node = RunMission(args.namespace, args.camera, args.skip_mission, use_log, use_video)
     log_started = False
     try:
         node.wait()
         if not args.skip_mission:
             node.map_uuid, _ = select_map(node, node.maps_client, args.map_uuid or "")
             node.mission_uuid, _ = select_mission(node, node.missions_client, args.mission_uuid or "")
-        log_started = node.start_log()
-        if not log_started:
-            return
-        if not node.start_video():
-            return
+        if use_log:
+            log_started = node.start_log()
+            if not log_started:
+                return
+        if use_video:
+            if not node.start_video():
+                return
         try:
             node.run_mission()
         except KeyboardInterrupt:
             node.cancel_in_flight()
     finally:
-        node.stop_video()
+        if use_video:
+            node.stop_video()
         if log_started:
             node.stop_log()
         node.destroy_node()

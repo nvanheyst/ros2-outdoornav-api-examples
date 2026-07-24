@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Loop a mission until battery drops below threshold or max loops hit.
 
+For robots without a dock. If the robot has a dock, use loop_mission_dock_charge.py
+instead — it pauses at the dock until the battery recovers rather than just stopping.
+
   ./loop_mission_battery_aware.py --threshold 30 --loops 5
   ./loop_mission_battery_aware.py --threshold 30 --loops 0   # run forever
   ONAV_MAP_ID=<uuid> ONAV_MISSION_ID=<uuid> ./loop_mission_battery_aware.py

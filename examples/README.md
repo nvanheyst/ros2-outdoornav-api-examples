@@ -13,9 +13,11 @@ First get the dev container running and connected to a robot or sim (see the
 
 ## If you're starting out
 
-- [ops/where_am_i.py](ops/where_am_i.py) - confirm you can talk to the robot and read its GPS fix.
-- [ops/doctor.py](ops/doctor.py) - one-call snapshot of autonomy state, battery, and topic liveness.
-- [ops/preflight.py](ops/preflight.py) - go/no-go readiness gate before you send a mission.
+Run these in order when connecting to a robot for the first time:
+
+1. [ops/where_am_i.py](ops/where_am_i.py) — can I see the robot at all? Subscribes to one topic and prints the GPS fix. Times out immediately if the connection or namespace is wrong.
+2. [ops/preflight.py](ops/preflight.py) — is autonomy ready to run? READY or NOT READY + blockers. Run this before every mission send.
+3. [ops/doctor.py](ops/doctor.py) — when something feels off: full snapshot of env, autonomy state, topic liveness, last mission result, and (with `--include-lifecycle`) every Nav2 node's state. Not a pre-mission check — a troubleshooting tool.
 
 ## Env-var defaults
 
@@ -91,6 +93,6 @@ No `clearpath_outdoornav_api_lib` imports anywhere, which keeps the call sites g
 Open an issue if you have an example request. Some known gaps:
 
 - Mission-side cancel via `mission_manager` (vs the action-handle path in `control/cancel_mission.py`).
-- Per-mission video / data-sampling config (beyond the start/stop bracket in `missions/mission_with_recording.py`).
+- Per-mission video / data-sampling config (beyond the start/stop bracket in `missions/run_mission.py`).
 - MapDock action (`autonomy/dock_map`) - dock via map coordinates rather than the local target tracker.
 - The larger examples sketched in [../mini-projects/IDEAS.md](../mini-projects/IDEAS.md) - none built yet.

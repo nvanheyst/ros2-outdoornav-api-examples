@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-"""One-call diagnostic: env, autonomy state, battery, GPS, key topics, Nav2 lifecycle.
+"""Troubleshooting snapshot: env, autonomy state, battery, GPS, topic liveness, Nav2 lifecycle.
+
+Run this when something feels off — not as a pre-mission check (use preflight.py for that).
+One command replaces the where_am_i → service_inventory → topic echo → lifecycle list
+scavenger hunt.
 
   ./doctor.py                                  # 3s snapshot, default namespace
   ./doctor.py --collect 5                      # subscribe longer before reporting
   ./doctor.py --include-lifecycle              # also query every Nav2 get_state service
   ONAV_NAMESPACE=/a300_00003 ./doctor.py
 
-What you get in one command:
+What you get:
   - Environment   : ROS_DOMAIN_ID, RMW, ROS distro
   - Autonomy      : state, paused flag, current goal id (from /autonomy/status)
   - Last mission  : status + age (from /autonomy/mission/_action/status)
@@ -14,10 +18,6 @@ What you get in one command:
   - Power         : battery percent (from /platform/bms/state)
   - Topic liveness: publisher count for each key OutdoorNav topic
   - Nav2 lifecycle: every lifecycle node's current state (active/inactive/etc.)
-
-Replaces the "where_am_i.py → service_inventory.py → ros2 topic echo → ros2
-lifecycle list" scavenger hunt that's the typical first ten minutes when
-something feels off.
 
 Touches:
   topic   <ns>/autonomy/status                          (AutonomyStatus)
