@@ -18,6 +18,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Python deps used by row_generator_polygon.py
 RUN pip install --no-cache-dir --break-system-packages shapely networkx pyproj
 
+# MCP server deps for mini-projects/onav-console/server.py
+RUN pip install --no-cache-dir --break-system-packages mcp fastmcp
+
 RUN mkdir -p /opt/ros2_overlay/src && cd /opt/ros2_overlay/src \
     && git clone https://github.com/clearpathrobotics/clearpath_msgs.git \
     && (cd clearpath_msgs && git checkout ${CLEARPATH_MSGS_REF}) \
