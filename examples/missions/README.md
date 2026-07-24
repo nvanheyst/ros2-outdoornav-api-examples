@@ -16,5 +16,5 @@ container + connection setup are in the [top-level README](../../README.md).
 | `schedule_mission.py` | `autonomy/mission` | Wait until a wall-clock target (ISO 8601 or `+30s/+5m`) then fire ExecuteMission. |
 | `run_mission.py` | `autonomy/mission`, optional `log_manager`, optional `<camera>/start_recording` | Run a mission with optional extras: prompted Y/N for log and camera video. The simplest way to fire a mission from a script with progressively more features. |
 
-Recording a *path* by driving lives in [`maps/record_path.py`](../maps/README.md);
-abort-recovery is in [`ops/mission_with_resume.py`](../ops/README.md).
+Recording a *path* by driving lives in [`maps/record_path.py`](../maps/record_path.py);
+abort-recovery is in [`ops/mission_with_resume.py`](../ops/mission_with_resume.py).

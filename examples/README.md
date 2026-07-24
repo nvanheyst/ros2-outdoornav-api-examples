@@ -22,9 +22,9 @@ Run these in order when connecting to a robot for the first time:
 ## Workflows
 
 **Record and replay a path:**
-1. `./maps/record_path.py east_perimeter` — drive while it records; Ctrl-C simplifies and pushes the map.
-2. `./missions/generate_traversal_mission.py --name east_patrol` — convert map nodes into a stored mission.
-3. `./missions/run_mission.py` — run it on demand (with optional log and video).
+1. `./examples/maps/record_path.py east_perimeter` — drive while it records; Ctrl-C simplifies and pushes the map.
+2. `./examples/missions/generate_traversal_mission.py --name east_patrol` — convert map nodes into a stored mission.
+3. `./examples/missions/run_mission.py` — run it on demand (with optional log and video).
 
 ## Env-var defaults
 

@@ -12,16 +12,16 @@ Multi-robot observability sink: each AMP runs `notify_on_mission_failure.py`, wh
 
 ## Fleet coordination
 
-Thin task dispatcher that assigns guard-route or inspection missions to whichever AMP is idle (or lowest battery). Could plug into Open-RMF for traffic management, or run as a standalone scheduler. Shows how to manage multiple `autonomy/mission` clients from one process.
+Thin task dispatcher that assigns guard-route or inspection missions to whichever AMP is idle (or lowest battery). Could plug into Open-RMF for traffic management, or run as a standalone scheduler managing multiple `autonomy/mission` clients from one process.
 
 ## Inspection and data collection
 
-Row or polygon traversal that pauses at each waypoint, fires a camera capture (or sensor trigger), and writes a timestamped record — GPS position, camera frame, custom sensor reading — to a JSON log and an optional cloud bucket. Shows the robot as a data-collection platform, not just transport.
+Row or polygon traversal that pauses at each waypoint, fires a camera capture (or sensor trigger), and writes a timestamped record — GPS position, camera frame, custom sensor reading — to a JSON log and an optional cloud bucket.
 
 ## Vision integration
 
 Connect a vision model running on the robot's onboard compute (Jetson or GPU AMP) to the `patterns/perception_gate.py` pattern. Covers building the `std_msgs/Bool` publisher that drives pause/resume from a real classifier — object detection, anomaly, safety zone.
 
-## OutdoorNav AI console (prototype)
+## onav-console
 
-Straight Ollama calls with a thin wrapper: user types a natural-language command, the script sends it to a local model, maps the response to an OutdoorNav API call (get state, send mission, go to POI, dock), and handles errors and misses without crashing. No TUI, no MCP protocol overhead — same pattern as the kuka console in the iiwa7-lab.
+MCP server (rclpy node) that exposes OutdoorNav API calls as tools — get state, send mission, go to POI, dock — paired with a lightweight console that drives it using Ollama's native tool calling. A light harness handles tool failures and runaway loops. Ollama and the console can run on the robot or on an operator machine. The MCP transport sidesteps the ROS 2 discovery bridging problem entirely.

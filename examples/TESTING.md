@@ -37,8 +37,9 @@ failure and triage before moving on.
 | Load from file | `./examples/maps/load_map_from_file.py path/to/map.json --name "smoke_load"` | Logs `map_uuid=…`, new map visible in UI under "smoke_load". | "No map name" → JSON missing `name`; "no uuid" → service returned empty response. |
 | Square row coverage | `./examples/maps/row_generator_square.py --lat 50.1094 --lon -97.3187 --width 30 --height 20 --spacing 5 --name smoke_rows` | Logs `created map 'smoke_rows' (…) with N nodes, N-1 edges`. UI shows snake of nodes. | "no GPS fix" → not applicable here (no fix needed); errors during create → check service is up. |
 | Polygon row coverage | `./examples/maps/row_generator_polygon.py --tag cov-2` | Requires ≥3 POIs tagged `cov-2`. Logs node + edge counts. | "need >=3 POIs" → tag mismatch; pyproj/shapely import error → `pip install -r docker/requirements.txt`. |
-| Bulk edit edges | `./examples/maps/bulk_edit_edges.py $ONAV_MAP_ID 50.1094 -97.3187 --radius 15 --dry-run` then drop `--dry-run --speed 0.5` | Dry-run lists matching edges; live call updates them. | Edges array empty → centre is too far from the map; permission denied → wrong namespace. |
-| Slow zone around me | `./examples/maps/bulk_edit_edges.py $ONAV_MAP_ID --around-me --radius 15 --speed 0.3 --dry-run` then drop `--dry-run` | Waits for fix, then lists/updates edges within 15 m of the robot. | "no fix within 10 s" → robot not localized. |
+| Coverage from here | `./examples/maps/row_generator_from_here.py --dry-run` then `./examples/maps/row_generator_from_here.py --width 30 --height 20 --spacing 5 --name smoke_from_here` | Dry-run prints the GPS fix + heading it would use. Live: reads current position + heading, logs node + edge counts, map appears in UI rows aligned to robot heading. | "no fix within N s" → robot not localized; "no TF for heading" → TF not publishing map→base_link. |
+| Bulk edit edges | `./examples/maps/bulk_edit_edges.py 50.1094 -97.3187 --radius 15 --map-uuid $ONAV_MAP_ID --dry-run` then drop `--dry-run` and add `--speed 0.5` | Dry-run lists matching edges; live call updates them. | Edges array empty → centre is too far from the map; permission denied → wrong namespace. |
+| Slow zone around me | `./examples/maps/bulk_edit_edges.py --around-me --radius 15 --speed 0.3 --map-uuid $ONAV_MAP_ID --dry-run` then drop `--dry-run` | Waits for fix, then lists/updates edges within 15 m of the robot. | "no fix within 10 s" → robot not localized. |
 
 ## Missions
 
@@ -50,6 +51,8 @@ failure and triage before moving on.
 | Traverse entire map via gotos | `./examples/missions/traverse_entire_map_gotos.py` | Prints naive vs greedy length, then ExecuteGoTo per node. | "no points on map" → bad map id; "still waiting" loop → action server down. |
 | Schedule a mission | `./examples/missions/schedule_mission.py +30s` | Countdown, then mission fires at T0. | "target time is in the past" → date parsing issue; permission denied → namespace. |
 | Battery loop | `./examples/missions/loop_mission_battery_aware.py --threshold 30 --loops 2` | Two loop iterations (assuming battery > 30%). | Battery never drops - fine; mission rejected at each loop - autonomy state. |
+| Loop + dock to charge | `./examples/missions/loop_mission_dock_charge.py --loops 1 --dock-threshold 5` | One loop; battery > 5% so it skips the charge wait and finishes cleanly. Set `--dock-threshold` above current battery to exercise the dock-and-wait path. | "dock not found" → pass `--dock-name`; "undock rejected" → docking stack not running. |
+| Visit POIs by tag | `./examples/missions/visit_pois_by_tag.py --tag goto --loops 1` | Lists POIs tagged `goto`, drives to each in alphabetical order, logs result per POI. | "no POIs with tag 'goto'" → assign the tag in the UI or use a different tag; "GoToPOI rejected" → autonomy busy. |
 | Go to POI (dry) | `./examples/missions/go_to_poi.py --dry-run` | Prints the three API paths (maps service, POIs service, goto_poi action). | None. |
 | Go to POI (live) | `./examples/missions/go_to_poi.py` | Interactive map + POI menu → ExecuteGoToPOI accepted → "arrived at <name>" log. | "GoToPOI goal rejected" → autonomy busy; "no POIs found" → no POIs on this map. |
 | Mission with feedback (dry) | `./examples/missions/mission_feedback.py --dry-run` | Prints the three API paths. | None. |
@@ -68,13 +71,15 @@ failure and triage before moving on.
 | Pause/resume (control_selection SetBool - legacy) | `./examples/control/pause_resume.py --variant control_setbool --hold 3` | Same lifecycle on the older path. | Same. |
 | Pause/resume (autonomy Trigger - legacy) | `./examples/control/pause_resume.py --variant autonomy_trigger --hold 3` | Same lifecycle on the older type. | Same. |
 | Stop autonomy | `./examples/control/stop_autonomy.py` | `OK` log, robot brakes. | "service not available" → wrong namespace. |
-| Dock at named dock | `./examples/control/dock_now.py --dry-run` then `./examples/control/dock_now.py --dock-name smoke_dock` | Dry-run prints dock DB service and Dock action paths. Live: picks dock from menu or `--dock-name`, fires Dock action to completion. | "dock not found" → check dock name with `--dry-run`; "action unavailable" → docking stack not started. |
+| Dock at named dock | `./examples/control/dock_now.py --dock-name smoke_dock` | Picks dock from DB, fires Dock action to completion. | "dock not found" → list available docks with `service_inventory.py --grep dock_database`; "action unavailable" → docking stack not started. |
 | Dock via map (dry) | `./examples/control/dock_map.py` with no dock in DB → interactive menu; with `--dock-name smoke_dock --map-uuid <uuid>` → immediate send | MapDock goal accepted → "docked at 'smoke_dock'" log. | "dock goal rejected" → MapDock action server unavailable (run `preflight.py` to check); dock result success=False → dock not reachable or wrong name. |
 
 ## Ops
 
 | Step | Command | Expected | Failure mode |
 |---|---|---|---|
+| Preflight | `./examples/ops/preflight.py` | READY with all checks green, or NOT READY + named blockers. | NOT READY → fix the listed blockers before running a mission; `wait_for_server` hangs → action server not up (check `service_inventory.py --grep dock_map`). |
+| Connect (real robot) | From `~/onav-lab/docker/` on the robot: `docker compose --env-file real-amp.env run --rm dev python3 examples/ops/connect_real_robot.py` | Detects Fast DDS transport, auto-detects namespace, prints live GPS fix + autonomy state. | "no namespace found" → discovery server not reachable; wrong `ROS_DOMAIN_ID` → check `robot.yaml`. |
 | List logs (dry) | `./examples/ops/delete_logs.py --dry-run` | "found N log(s) … will delete N (dry-run)" | Service unavailable → logger not running. |
 | Purge oldest only | `./examples/ops/delete_logs.py --keep-recent 1 --dry-run` then drop `--dry-run` | Lists then deletes everything > 1 h old. | Same. |
 | Delete entry but keep media | `./examples/ops/delete_logs.py --keep-media --keep-record --dry-run` then drop `--dry-run` | UI entries vanish, files stay on disk. | Same. |
