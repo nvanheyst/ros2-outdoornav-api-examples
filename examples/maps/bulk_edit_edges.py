@@ -5,9 +5,9 @@ This is the slow-zone + bulk-path-radius tool. `--speed` sets the edge
 speed limit (slow zone); `--path-radius` sets the edge path radius
 (corridor widening / tightening). Either or both can be applied.
 
-  ./bulk_edit_edges.py --around-me 15
-  ./bulk_edit_edges.py <lat> <lon> <radius_m>
-  ./bulk_edit_edges.py <lat> <lon> <radius_m> --speed 0.5 --path-radius 0.8 --map-uuid <uuid>
+  ./bulk_edit_edges.py --around-me --radius 15
+  ./bulk_edit_edges.py <lat> <lon> --radius <m>
+  ./bulk_edit_edges.py <lat> <lon> --radius 15 --speed 0.5 --path-radius 0.8 --map-uuid <uuid>
 
 An edge is "in the zone" if either endpoint is within radius_m of the
 centre. With `--clone`, the source map is copied first and edits land on
@@ -143,7 +143,7 @@ def main(argv=None):
                         help="Zone centre latitude (omit with --around-me).")
     parser.add_argument("lon", type=float, nargs="?",
                         help="Zone centre longitude (omit with --around-me).")
-    parser.add_argument("radius_m", type=float, nargs="?",
+    parser.add_argument("--radius", type=float, required=True,
                         help="Zone radius in metres.")
     parser.add_argument("--around-me", action="store_true",
                         help="Use the robot's current GPS fix as the centre (ignores lat/lon args).")
@@ -157,8 +157,6 @@ def main(argv=None):
 
     if not args.around_me and (args.lat is None or args.lon is None):
         parser.error("lat and lon required (or pass --around-me)")
-    if args.radius_m is None:
-        parser.error("radius_m is required")
 
     rclpy.init()
     node = BulkEdit(args.namespace)
@@ -194,9 +192,9 @@ def main(argv=None):
         node.get_logger().info(
             f"source map {m.name!r}: {len(m.points)} pts, {len(m.connections)} edges"
         )
-        target_edges = edges_in_zone(m, (lat, lon), args.radius_m)
+        target_edges = edges_in_zone(m, (lat, lon), args.radius)
         node.get_logger().info(
-            f"{len(target_edges)} edges within {args.radius_m:.1f} m of "
+            f"{len(target_edges)} edges within {args.radius:.1f} m of "
             f"({lat:.6f}, {lon:.6f})"
         )
         if args.dry_run or not target_edges:
@@ -207,7 +205,7 @@ def main(argv=None):
             target_uuid = node.clone(map_uuid, args.clone)
             node.get_logger().info(f"cloned to {args.clone!r} ({target_uuid})")
             m = node.fetch_map(target_uuid)
-            target_edges = edges_in_zone(m, (lat, lon), args.radius_m)
+            target_edges = edges_in_zone(m, (lat, lon), args.radius)
 
         node.update(target_uuid, target_edges, speed, path_radius)
         node.get_logger().info(

@@ -37,8 +37,8 @@ failure and triage before moving on.
 | Load from file | `./examples/maps/load_map_from_file.py path/to/map.json --name "smoke_load"` | Logs `map_uuid=…`, new map visible in UI under "smoke_load". | "No map name" → JSON missing `name`; "no uuid" → service returned empty response. |
 | Square row coverage | `./examples/maps/row_generator_square.py --lat 50.1094 --lon -97.3187 --width 30 --height 20 --spacing 5 --name smoke_rows` | Logs `created map 'smoke_rows' (…) with N nodes, N-1 edges`. UI shows snake of nodes. | "no GPS fix" → not applicable here (no fix needed); errors during create → check service is up. |
 | Polygon row coverage | `./examples/maps/row_generator_polygon.py --tag cov-2` | Requires ≥3 POIs tagged `cov-2`. Logs node + edge counts. | "need >=3 POIs" → tag mismatch; pyproj/shapely import error → `pip install -r docker/requirements.txt`. |
-| Bulk edit edges | `./examples/maps/bulk_edit_edges.py --speed 0.5 -- $ONAV_MAP_ID 50.1094 -97.3187 15` then `./examples/maps/bulk_edit_edges.py $ONAV_MAP_ID 50.1094 -97.3187 15 --dry-run` | Dry-run lists matching edges; live call updates them. | Edges array empty → centre is too far from the map; permission denied → wrong namespace. |
-| Slow zone around me | `./examples/maps/bulk_edit_edges.py $ONAV_MAP_ID 15 --around-me --speed 0.3 --dry-run` then drop `--dry-run` | Waits for fix, then lists/updates edges within 15 m of the robot. | "no fix within 10 s" → robot not localized. |
+| Bulk edit edges | `./examples/maps/bulk_edit_edges.py $ONAV_MAP_ID 50.1094 -97.3187 --radius 15 --dry-run` then drop `--dry-run --speed 0.5` | Dry-run lists matching edges; live call updates them. | Edges array empty → centre is too far from the map; permission denied → wrong namespace. |
+| Slow zone around me | `./examples/maps/bulk_edit_edges.py $ONAV_MAP_ID --around-me --radius 15 --speed 0.3 --dry-run` then drop `--dry-run` | Waits for fix, then lists/updates edges within 15 m of the robot. | "no fix within 10 s" → robot not localized. |
 
 ## Missions
 
@@ -50,9 +50,13 @@ failure and triage before moving on.
 | Traverse entire map via gotos | `./examples/missions/traverse_entire_map_gotos.py` | Prints naive vs greedy length, then ExecuteGoTo per node. | "no points on map" → bad map id; "still waiting" loop → action server down. |
 | Schedule a mission | `./examples/missions/schedule_mission.py +30s` | Countdown, then mission fires at T0. | "target time is in the past" → date parsing issue; permission denied → namespace. |
 | Battery loop | `./examples/missions/loop_mission_battery_aware.py --threshold 30 --loops 2` | Two loop iterations (assuming battery > 30%). | Battery never drops - fine; mission rejected at each loop - autonomy state. |
+| Go to POI (dry) | `./examples/missions/go_to_poi.py --dry-run` | Prints the three API paths (maps service, POIs service, goto_poi action). | None. |
+| Go to POI (live) | `./examples/missions/go_to_poi.py` | Interactive map + POI menu → ExecuteGoToPOI accepted → "arrived at <name>" log. | "GoToPOI goal rejected" → autonomy busy; "no POIs found" → no POIs on this map. |
+| Mission with feedback (dry) | `./examples/missions/mission_feedback.py --dry-run` | Prints the three API paths. | None. |
+| Mission with feedback (live) | `./examples/missions/mission_feedback.py` | Interactive map + mission menu → "waypoint N/M (X%)" lines printed as the robot drives; "mission succeeded" at the end. | No feedback lines but mission runs → confirm the RMW isn't swallowing feedback (spin loop should drain it). |
 | Record path | `./examples/maps/record_path.py smoke_recorded --min-distance 1.0` | Subscribes to fix, prints "N points…" every 10 samples. Ctrl-C → "captured N raw points → simplified to M → map smoke_recorded created". | No points accumulate → no fix; `create_map` errors → map service. |
-| Mission with recording (plumbing) | `./examples/missions/mission_with_recording.py --skip-mission` | start_recording OK → 5 s sleep → stop_recording OK. New log shows up in the UI. | "service not available" → run `service_inventory.py --grep log_manager`; if your stack uses `StartRecording`/`StopRecording` (not Trigger), swap the import. |
-| Mission with recording (full run) | `./examples/missions/mission_with_recording.py` | start_recording → ExecuteMission runs to completion → stop_recording. UI shows a single bracketed log. | "Goal rejected" → autonomy busy; stop_recording still fires in the finally block. |
+| Run mission with log (plumbing) | `./examples/missions/run_mission.py --skip-mission --log` | start_recording OK → 5 s sleep → stop_recording OK. New log shows up in the UI. | "service not available" → run `service_inventory.py --grep log_manager`. |
+| Run mission with log (full run) | `./examples/missions/run_mission.py --log` | start_recording → pick map + mission → ExecuteMission runs to completion → stop_recording. UI shows a single bracketed log. | "Goal rejected" → autonomy busy; stop_recording still fires in the finally block. |
 
 ## Control
 
@@ -63,11 +67,9 @@ failure and triage before moving on.
 | Pause/resume (autonomy SetBool - default, 2.3) | `./examples/control/pause_resume.py --hold 3` | Pause OK → 3 s → resume OK. | "service not available" → try `--variant control_setbool` or `--variant autonomy_trigger`. |
 | Pause/resume (control_selection SetBool - legacy) | `./examples/control/pause_resume.py --variant control_setbool --hold 3` | Same lifecycle on the older path. | Same. |
 | Pause/resume (autonomy Trigger - legacy) | `./examples/control/pause_resume.py --variant autonomy_trigger --hold 3` | Same lifecycle on the older type. | Same. |
-| Pause + teleop in-mission | `./examples/control/pause_and_teleop.py --hold 5` | GoToPOI fires → after 10 s pauses → 180° turn + 1 m drive while paused → resume → completes. | POI rejected → wrong POI uuid; autonomy/stop fails → ignore (best-effort cleanup). |
 | Stop autonomy | `./examples/control/stop_autonomy.py` | `OK` log, robot brakes. | "service not available" → wrong namespace. |
-| Cancel mission (self-started) | `./examples/control/cancel_mission.py --after 5` | Mission starts, runs ~5 s, cancels via goal handle, status returns 5 (CANCELED). | "goal rejected" → autonomy busy; "status=4" → mission completed faster than `--after`. |
-| Dock workflow (plumbing) | `./examples/control/dock_workflow.py --dry-run` | Lists the 5 calls it would make. | None. |
-| Dock workflow (live) | `./examples/control/dock_workflow.py --dock-name smoke_dock --template default_dock --backup-distance 2 --hold 5` | AddDockCurrentPose OK → 2 m back-up → Dock action succeeds → 5 s hold → Undock action succeeds → RemoveDock OK. | "AddDockCurrentPose failed" → wrong template name (check robot config); Dock action rejected → dock target not visible to the sensor; in sim, try `--template a300_default_dock` or whatever your sim ships. |
+| Dock at named dock | `./examples/control/dock_now.py --dry-run` then `./examples/control/dock_now.py --dock-name smoke_dock` | Dry-run prints dock DB service and Dock action paths. Live: picks dock from menu or `--dock-name`, fires Dock action to completion. | "dock not found" → check dock name with `--dry-run`; "action unavailable" → docking stack not started. |
+| Dock via map (dry) | `./examples/control/dock_map.py` with no dock in DB → interactive menu; with `--dock-name smoke_dock --map-uuid <uuid>` → immediate send | MapDock goal accepted → "docked at 'smoke_dock'" log. | "dock goal rejected" → MapDock action server unavailable (run `preflight.py` to check); dock result success=False → dock not reachable or wrong name. |
 
 ## Ops
 
@@ -81,7 +83,7 @@ failure and triage before moving on.
 | Doctor snapshot | `./examples/ops/doctor.py --include-lifecycle` | Sections: env, autonomy, localization, power, topic liveness, Nav2 lifecycle. Each non-empty when the stack is healthy. | `(no message)` rows → topic isn't publishing in this namespace; lifecycle empty → `--include-lifecycle` was omitted or no managed nodes match the ns filter. |
 | Doctor with short collect | `./examples/ops/doctor.py --collect 1` | Same shape, may miss low-rate topics. | If battery / fix sections are empty, bump `--collect`. |
 | Notify watcher (dry) | `./examples/ops/notify_on_mission_failure.py --dry-run --via stdout,email,webhook,sms` | Prints the formatted body for every backend; no network. | Body missing fields → `FailureContext` dataclass out of sync with template. |
-| Notify watcher (live, stdout) | `./examples/ops/notify_on_mission_failure.py` then in another shell start and abort a mission (e.g. `./examples/control/cancel_mission.py --after 2`) | After the cancel, watcher prints nothing (cancels are silent by default). Re-run with `--also-on-cancel` to confirm; for a real abort, drop an e-stop or block the path. | No status seen → topic name mismatch; subscribed before any mission ran → expected. |
+| Notify watcher (live, stdout) | `./examples/ops/notify_on_mission_failure.py` then in another shell start a mission and Ctrl-C `./examples/missions/run_mission.py`, or trigger a real abort (e-stop, blocked path) | After the cancel, watcher prints nothing (cancels are silent by default). Re-run with `--also-on-cancel` to confirm; for a real abort, drop an e-stop or block the path. | No status seen → topic name mismatch; subscribed before any mission ran → expected. |
 | Notify watcher (live, email + sms) | `NOTIFY_SMTP_* … TWILIO_* … ./examples/ops/notify_on_mission_failure.py --via email,sms --camera-topic <ns>/sensors/camera_0/color/compressed` then trigger an abort | Email arrives with body + JPEG attachment; SMS arrives with one-line summary. | Email auth fail → SMTP creds / 2FA app password; SMS fail → Twilio creds / verified number. |
 | `where_am_i`, `service_inventory` | already exercised in **Live sanity** at the top. | - | - |
 
@@ -89,18 +91,19 @@ failure and triage before moving on.
 
 | Step | Command | Expected | Failure mode |
 |---|---|---|---|
-| Graceful shutdown (live, Ctrl-C) | `./patterns/graceful_shutdown.py` then Ctrl-C while the mission is in flight | "Ctrl-C - cancelling in-flight goal" log; mission status returns 5 (CANCELED); robot brakes. | Status returns 4 (SUCCEEDED) → you waited too long, mission finished before the interrupt; status missing → cancel ack timed out (check `cancel_goal_blocking` timeout). |
-| Param list | `./patterns/parameter_runtime.py --node <ns>/controller_server list` | Prints parameter names, one per line, then a `-- N parameter(s) --` footer. | Empty → wrong node name or service not exposed. |
-| Param get | `./patterns/parameter_runtime.py --node <ns>/controller_server get max_vel_x` | `max_vel_x = 0.5  (double)` style output. | "parameter not declared" → name typo or not exposed. |
-| Param set | `./patterns/parameter_runtime.py --node <ns>/controller_server set max_vel_x 0.3` | `OK: max_vel_x <- 0.3 (double)` | "FAILED: parameter is read-only" → declared with `read_only=True`; "rejected" → outside declared range. |
+| Graceful shutdown (live, Ctrl-C) | `./examples/patterns/graceful_shutdown.py` then Ctrl-C while the mission is in flight | "Ctrl-C - cancelling in-flight goal" log; mission status returns 5 (CANCELED); robot brakes. | Status returns 4 (SUCCEEDED) → you waited too long, mission finished before the interrupt; status missing → cancel ack timed out (check `cancel_goal_blocking` timeout). |
+| Param list | `./examples/patterns/parameter_runtime.py --node <ns>/controller_server list` | Prints parameter names, one per line, then a `-- N parameter(s) --` footer. | Empty → wrong node name or service not exposed. |
+| Param get | `./examples/patterns/parameter_runtime.py --node <ns>/controller_server get max_vel_x` | `max_vel_x = 0.5  (double)` style output. | "parameter not declared" → name typo or not exposed. |
+| Param set | `./examples/patterns/parameter_runtime.py --node <ns>/controller_server set max_vel_x 0.3` | `OK: max_vel_x <- 0.3 (double)` | "FAILED: parameter is read-only" → declared with `read_only=True`; "rejected" → outside declared range. |
+| Perception gate (dry) | `./examples/patterns/perception_gate.py --dry-run` — not applicable; no dry-run. Use: `./examples/patterns/perception_gate.py` in background, then `ros2 topic pub -1 /perception_gate std_msgs/Bool '{data: false}'` and `'{data: true}'` | Log shows "autonomy paused" / "autonomy resumed" on each message. | "service not available" → wrong namespace; no log → Bool topic mismatch. |
 
 ## Recovery
 
 | Step | Command | Expected | Failure mode |
 |---|---|---|---|
-| Recover from abort (dry) | `./examples/ops/recover_from_abort.py --dry-run` | Lists the action paths and retry params without firing anything. | None expected. |
-| Recover from abort (live, no failure) | `./examples/ops/recover_from_abort.py --max-retries 2` | Runs ExecuteMission, hits SUCCEEDED, logs "mission succeeded after 1 attempt(s)" and exits. | If autonomy is busy → goal rejected on first attempt; check stack state. |
-| Recover from abort (live, induced failure) | Same command, then drop an obstacle in the path so the first attempt aborts | After abort: rich detail printed (code, goal_states), `--backoff` sleep, then ExecuteMissionFromGoal from the last in-flight waypoint. Up to `--max-retries` retries. | Robot can't replan → exhausts retries; that's the intended terminal behaviour. |
+| Mission with resume (dry) | `./examples/ops/mission_with_resume.py --dry-run` | Lists the action paths and retry params without firing anything. | None expected. |
+| Mission with resume (live, no failure) | `./examples/ops/mission_with_resume.py --max-retries 2` | Runs ExecuteMission, hits SUCCEEDED, logs "mission succeeded after 1 attempt(s)" and exits. | If autonomy is busy → goal rejected on first attempt; check stack state. |
+| Mission with resume (live, induced failure) | Same command, then drop an obstacle in the path so the first attempt aborts | After abort: rich detail printed (code, goal_states), `--backoff` sleep, then ExecuteMissionFromGoal from the last in-flight waypoint. Up to `--max-retries` retries. | Robot can't replan → exhausts retries; that's the intended terminal behaviour. |
 
 ## What "failure" means here
 

@@ -5,14 +5,15 @@ Subscribes to <namespace>/localization/fix and accumulates points; on Ctrl-C,
 applies Ramer-Douglas-Peucker simplification and optionally pushes the result
 as a new map.
 
-  ./record_path.py                          # print points on Ctrl-C, don't push
-  ./record_path.py east_perimeter           # push as map 'east_perimeter'
+  ./record_path.py                           # print points on Ctrl-C, don't push
+  ./record_path.py east_perimeter            # push as map 'east_perimeter' (one-way)
+  ./record_path.py east_perimeter --two-way  # bidirectional edges (forward + reverse)
   ./record_path.py east_perimeter --min-distance 0.25 --max-deviation 0.3
 
 Drive however you like in another terminal while this runs.
 
 Touches:
-  topic   <namespace>/localization/fix         (NavSatFix, subscribe)
+  topic   <namespace>/localization/fix          (NavSatFix, subscribe)
   service <namespace>/mission_manager/create_map (CreateMap, only when saving)
 """
 
@@ -100,7 +101,7 @@ class PathRecorder(Node):
         if not self.points or haversine_m(self.points[-1], pt) >= self.min_dist:
             self.points.append(pt)
 
-    def push_as_map(self, name: str, simplified) -> str:
+    def push_as_map(self, name: str, simplified, two_way: bool = False) -> str:
         wait_for_service(self, self.create_map_client, self.create_map_srv)
         points = []
         for i, (lat, lon) in enumerate(simplified):
@@ -108,12 +109,16 @@ class PathRecorder(Node):
             points.append(p)
         edges = []
         for a, b in zip(points[:-1], points[1:]):
-            e = MapEdgeReq()
-            e.start_point_id = a.uuid
-            e.end_point_id = b.uuid
-            e.speed_limit = SPEED_LIMIT_M_S
-            e.radius = EDGE_RADIUS_M
-            edges.append(e)
+            def make_edge(src, dst):
+                e = MapEdgeReq()
+                e.start_point_id = src.uuid
+                e.end_point_id = dst.uuid
+                e.speed_limit = SPEED_LIMIT_M_S
+                e.radius = EDGE_RADIUS_M
+                return e
+            edges.append(make_edge(a, b))
+            if two_way:
+                edges.append(make_edge(b, a))
         req = CreateMap.Request()
         req.name = name
         req.default_radius = EDGE_RADIUS_M
@@ -133,12 +138,15 @@ def main(argv=None):
                         help="Minimum metres between sampled points (default 0.5).")
     parser.add_argument("--max-deviation", type=float, default=0.5,
                         help="Max RDP simplification deviation in metres (default 0.5).")
+    parser.add_argument("--two-way", action="store_true",
+                        help="Emit both a→b and b→a edges (bidirectional). Default: one-way chain.")
     args = parser.parse_args(argv)
 
     rclpy.init()
     node = PathRecorder(args.namespace, args.min_distance)
+    edge_mode = "two-way" if args.two_way else "one-way"
     node.get_logger().info(
-        f"recording from {node.fix_topic}. Ctrl-C to stop"
+        f"recording from {node.fix_topic} [{edge_mode}]. Ctrl-C to stop"
         + (f" and save as {args.map_name!r}." if args.map_name else " (no save - will print points).")
     )
 
@@ -161,11 +169,15 @@ def main(argv=None):
                 f"simplified to {len(simplified)} (max_dev={args.max_deviation} m)"
             )
             if args.map_name and not args.dry_run:
-                map_uuid = node.push_as_map(args.map_name, simplified)
-                node.get_logger().info(f"map {args.map_name!r} created: {map_uuid}")
-            elif args.map_name and args.dry_run:
+                map_uuid = node.push_as_map(args.map_name, simplified, two_way=args.two_way)
                 node.get_logger().info(
-                    f"[dry-run] would create map {args.map_name!r} via {node.create_map_srv}"
+                    f"map {args.map_name!r} created ({edge_mode}): {map_uuid}"
+                )
+            elif args.map_name and args.dry_run:
+                n_edges = (len(simplified) - 1) * (2 if args.two_way else 1)
+                node.get_logger().info(
+                    f"[dry-run] would create map {args.map_name!r} ({edge_mode}, "
+                    f"{len(simplified)} nodes, {n_edges} edges) via {node.create_map_srv}"
                 )
             else:
                 for lat, lon in simplified:

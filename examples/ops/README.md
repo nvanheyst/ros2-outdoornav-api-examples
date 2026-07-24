@@ -6,6 +6,7 @@ for failures, and clean up test data. Dev container + connection setup are in th
 
 | File | API surface | What it does |
 |---|---|---|
+| `connect_real_robot.py` | `localization/fix`, `autonomy/status`, ROS graph | Read-only connection check for a real robot: confirms transport (Fast DDS discovery server vs CycloneDDS), auto-detects namespace, and shows live fix + autonomy state. First step when switching from sim to a live AMP. |
 | `preflight.py` | `diagnostics_{toplevel_state,agg}`, `localization/fix`, tf, `platform/{emergency_stop,bms/state}`, `sensors/lidar3d_0/nonground_filtered`, `collision_monitor/get_parameters`, `autonomy/{mission,dock_map}` (wait_for_server) | **Go / no-go gate.** Checks the things that stop autonomy - system-health ERROR, localization, collision detection actually fed (not just enabled), docking + mission action servers, e-stop, battery - and prints READY / NOT READY. Read-only. Fails only on functional blockers; diagnostics WARN and low-but-ok battery are notes, not failures. |
 | `where_am_i.py` | `localization/fix` | Print the latest GPS fix and exit. |
 | `doctor.py` | `autonomy/status`, `localization/fix`, `platform/bms/state`, `autonomy/mission/_action/status`, optional `<lifecycle_node>/get_state` | One-call diagnostic snapshot: env, autonomy state, battery, GPS fix age, last mission status, key topic liveness, and (with `--include-lifecycle`) every managed-node state. |
