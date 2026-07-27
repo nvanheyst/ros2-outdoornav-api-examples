@@ -13,9 +13,6 @@ import os
 import sys
 import threading
 import time
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 import rclpy
 from action_msgs.msg import GoalStatus
@@ -35,7 +32,28 @@ from rclpy.node import Node
 from sensor_msgs.msg import BatteryState, NavSatFix
 from std_srvs.srv import Trigger
 
-from examples.common.config import _detect_robot_namespaces, normalize_namespace
+def normalize_namespace(ns: str) -> str:
+    ns = (ns or "").strip()
+    if not ns:
+        return ""
+    if not ns.startswith("/"):
+        ns = "/" + ns
+    return ns.rstrip("/")
+
+
+def _detect_robot_namespaces(node) -> list[str]:
+    topics = {t for t, _ in node.get_topic_names_and_types()}
+    roots: set[str] = set()
+    for _name, ns in node.get_node_names_and_namespaces():
+        ns = normalize_namespace(ns)
+        if ns:
+            roots.add("/" + ns.lstrip("/").split("/")[0])
+    anchored = sorted(
+        r for r in roots
+        if f"{r}/localization/fix" in topics or f"{r}/platform/bms/state" in topics
+    )
+    return anchored or sorted(roots)
+
 
 SVC_TIMEOUT = 30.0
 
@@ -50,7 +68,7 @@ TOOL_TIMEOUT = {
     "stop": 10.0,
 }
 
-ACTIVITY_NAMES = {
+STATE_NAMES = {
     AutonomyStatus.IDLE: "idle",
     AutonomyStatus.MISSION: "running mission",
     AutonomyStatus.MISSION_FROM_GOAL: "running mission from goal",
@@ -226,7 +244,7 @@ class OnavNode(Node):
         raw_docks = (getattr(db, "docks", None) or []) if db else []
         docks = [{"name": d.name} for d in raw_docks]
 
-        self._data = {"maps": maps, "pois": pois, "missions": missions, "docks": docks}
+        self._data = {"namespace": self._ns, "maps": maps, "pois": pois, "missions": missions, "docks": docks}
         self._data_ready.set()
         return self._data
 
@@ -234,8 +252,10 @@ class OnavNode(Node):
         result: dict = {}
         if self._autonomy_status is not None:
             st = self._autonomy_status
-            result["activity"] = ACTIVITY_NAMES.get(st.activity, str(st.activity))
+            result["state"] = STATE_NAMES.get(st.state, str(st.state))
             result["paused"] = bool(st.paused)
+            if st.current_goal:
+                result["current_goal"] = st.current_goal
         if self._battery is not None:
             result["battery_percent"] = round(self._battery.percentage * 100, 1)
         if self._gps is not None:
@@ -370,7 +390,7 @@ def build_server(node: OnavNode, host: str, port: int) -> FastMCP:
         """Fetch maps, missions, POIs, and docks from the robot.
 
         Call at startup and after creating new maps or missions in the web UI.
-        Returns {"maps":[{"name","uuid"}], "missions":[...], "pois":[...], "docks":[{"name"}]}.
+        Returns {"namespace":"...", "maps":[{"name","uuid"}], "missions":[...], "pois":[...], "docks":[{"name"}]}.
         """
         return node.do_sync()
 
@@ -440,8 +460,8 @@ def build_server(node: OnavNode, host: str, port: int) -> FastMCP:
         and calls autonomy/stop. Resets the cancel flag so the next command works normally.
         """
         node.cancel_active()
+        node.clear_cancel()  # clear before stop so _wait() doesn't short-circuit
         stop_result = node.do_stop()
-        node.clear_cancel()
         return {"cancelled": True, "stop": stop_result}
 
     return mcp

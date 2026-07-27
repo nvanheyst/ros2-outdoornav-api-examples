@@ -8,7 +8,7 @@ Requires: Ollama running locally, onav MCP server reachable at $MCP_URL.
 
 Usage:
   bash run.sh
-  ONAV_TARGET=real MCP_URL=http://10.0.0.35:8091/mcp bash run.sh
+  ONAV_TARGET=real MCP_URL=http://<robot-host>:8091/mcp bash run.sh
 """
 from __future__ import annotations
 
@@ -41,11 +41,11 @@ the operator navigate and run missions. Answer in one or two sentences.
 
 HELP = """\
 [b]Commands[/]
-  /help     this message
-  /tools    list the available tools
-  /sync     refresh maps, missions, POIs, and docks from the robot
-  /clear    forget the conversation so far
-  /quit     leave
+  /help           this message
+  /tools /skills  list the available tools
+  /sync           refresh maps, missions, POIs, and docks from the robot
+  /clear          forget the conversation so far
+  /quit /exit     leave
 
 [b]Ctrl-C[/] during a running command cancels it and stops the robot.
 
@@ -184,6 +184,7 @@ class OnavConsole:
             data = await self.mcp.call_tool("sync_data", {})
             if "error" not in data:
                 self._synced_data = data
+                self._robot_ns = data.get("namespace", self._robot_ns)
                 self._system = _build_system(data, self._robot_ns)
                 if not quiet:
                     maps = len(data.get("maps", []))
@@ -209,9 +210,11 @@ class OnavConsole:
         self.out.print(f"[dim]{counts}[/]")
 
         if missions:
-            self.out.print(f'[dim]Try: "run the {missions[0][\"name\"]}" or "what\'s the battery level?"[/]')
+            hint = missions[0]["name"]
+            self.out.print(f'[dim]Try: "run the {hint}" or "what\'s the battery level?"[/]')
         elif pois:
-            self.out.print(f'[dim]Try: "go to {pois[0][\"name\"]}" or "what\'s the battery level?"[/]')
+            hint = pois[0]["name"]
+            self.out.print(f'[dim]Try: "go to {hint}" or "what\'s the battery level?"[/]')
         else:
             self.out.print('[dim]No missions or POIs yet — create them in the web UI, then /sync[/]')
 
@@ -337,7 +340,7 @@ class OnavConsole:
             if text == "/help":
                 self.out.print(HELP)
                 continue
-            if text == "/tools":
+            if text in ("/tools", "/skills"):
                 for s in self.specs:
                     desc = s["description"].strip().splitlines()
                     self.out.print(f"  [b]{s['name']}[/]: {escape(desc[0] if desc else '')}")

@@ -9,7 +9,7 @@
     <General>
       <AllowMulticast>true</AllowMulticast>
       <Interfaces>
-        <NetworkInterface name="eth0"/>
+        <NetworkInterface name="lo"/>
       </Interfaces>
     </General>
     <Discovery>

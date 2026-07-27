@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN pip install --no-cache-dir --break-system-packages shapely networkx pyproj
 
 # MCP server deps for mini-projects/onav-console/server.py
-RUN pip install --no-cache-dir --break-system-packages mcp fastmcp
+RUN pip install --no-cache-dir --break-system-packages --ignore-installed mcp fastmcp
 
 RUN mkdir -p /opt/ros2_overlay/src && cd /opt/ros2_overlay/src \
     && git clone https://github.com/clearpathrobotics/clearpath_msgs.git \
