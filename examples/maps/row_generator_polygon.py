@@ -257,7 +257,8 @@ def main(argv=None):
         rc = node.run(dry_run=args.dry_run, replace=args.replace)
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
     sys.exit(rc)
 
 

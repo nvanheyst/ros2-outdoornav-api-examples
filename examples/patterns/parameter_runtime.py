@@ -203,7 +203,8 @@ def main(argv=None):
             print(client.describe(args.name))
     finally:
         client.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == "__main__":

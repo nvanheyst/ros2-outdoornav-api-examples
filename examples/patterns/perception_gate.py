@@ -62,17 +62,25 @@ class PerceptionGate(Node):
     def _set_pause(self, pause: bool) -> None:
         client = self.pause_client if pause else self.resume_client
         srv = self.pause_srv if pause else self.resume_srv
+        action = "paused" if pause else "resumed"
+        # This runs inside a subscription callback while rclpy.spin() already
+        # spins the node, so we must not block on the response here — a nested
+        # spin_until_future_complete raises "Executor is already spinning".
+        # Set state optimistically (so a repeat gate message doesn't re-fire the
+        # call) and confirm — or revert — from the done-callback.
+        self._paused = pause
         # pause and resume are separate services; both expect data=True to trigger
         future = client.call_async(SetBool.Request(data=True))
-        rclpy.spin_until_future_complete(self, future, timeout_sec=2.0)
-        resp = future.result()
-        ok = bool(resp and resp.success) if resp else False
-        action = "paused" if pause else "resumed"
-        if ok:
-            self._paused = pause
-            self.get_logger().info(f"autonomy {action}")
-        else:
-            self.get_logger().warn(f"{srv} call failed — autonomy may not have {action}")
+
+        def _on_done(fut) -> None:
+            resp = fut.result()
+            if resp and resp.success:
+                self.get_logger().info(f"autonomy {action}")
+            else:
+                self._paused = not pause
+                self.get_logger().warn(f"{srv} call failed — autonomy may not have {action}")
+
+        future.add_done_callback(_on_done)
 
 
 def main(argv=None):
@@ -90,7 +98,8 @@ def main(argv=None):
         node.get_logger().info("shutting down")
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == "__main__":

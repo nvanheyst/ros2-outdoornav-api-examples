@@ -184,7 +184,8 @@ def main(argv=None):
                     print(f"  {lat:.6f}, {lon:.6f}")
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == "__main__":

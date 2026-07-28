@@ -201,7 +201,8 @@ def main(argv=None):
         node.get_logger().warn("interrupted")
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == "__main__":

@@ -99,7 +99,8 @@ def main(argv=None):
             node.get_logger().info(f"  {'deleted' if ok else 'FAILED'} {uid}")
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == "__main__":

@@ -164,7 +164,8 @@ def main(argv=None):
         node.cancel_in_flight()
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == "__main__":
