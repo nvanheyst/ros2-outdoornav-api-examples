@@ -22,7 +22,7 @@ from clearpath_dock_msgs.action import Dock
 from clearpath_dock_msgs.srv import GetDockDatabase
 
 from examples.common.argparse_base import make_parser
-from examples.common.ros_helpers import wait_for_action, wait_for_service
+from examples.common.ros_helpers import wait_for_action
 from examples.common.onav import select_dock
 
 
@@ -40,7 +40,8 @@ def main(argv=None):
     dock_db_client = node.create_client(GetDockDatabase, dock_db_srv)
     try:
         wait_for_action(node, client, action_path)
-        wait_for_service(node, dock_db_client, dock_db_srv)
+        # select_dock probes the dock-database service itself and falls back to
+        # a typed name — don't wait_for_service here (not present on every build).
         dock_name = select_dock(node, dock_db_client, args.dock_name or "")
         send_future = client.send_goal_async(Dock.Goal(dock_name=dock_name))
         rclpy.spin_until_future_complete(node, send_future)

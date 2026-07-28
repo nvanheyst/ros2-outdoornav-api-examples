@@ -47,7 +47,7 @@ class BatteryAwareLoop(Node):
         self.battery_topic = f"{namespace}/platform/bms/state"
         self.mission_action = f"{namespace}/autonomy/mission"
         self.maps_srv = f"{namespace}/mission_manager/get_all_maps"
-        self.missions_srv = f"{namespace}/mission_manager/get_all_network_missions"
+        self.missions_srv = f"{namespace}/mission_manager/get_all_missions"
         self.create_subscription(BatteryState, self.battery_topic, self._bms_cb, 10)
         self.mission_client = ActionClient(self, ExecuteMission, self.mission_action)
         self.maps_client = self.create_client(GetAllMaps, self.maps_srv)

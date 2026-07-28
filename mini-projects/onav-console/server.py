@@ -115,7 +115,7 @@ class OnavNode(Node):
 
         self._maps_client = self.create_client(GetAllMaps, f"{ns}/mission_manager/get_all_maps")
         self._pois_client = self.create_client(GetAllPointsOfInterest, f"{ns}/mission_manager/get_all_points_of_interest")
-        self._missions_client = self.create_client(GetAllNetworkMissions, f"{ns}/mission_manager/get_all_network_missions")
+        self._missions_client = self.create_client(GetAllNetworkMissions, f"{ns}/mission_manager/get_all_missions")
         self._dock_db_client = self.create_client(GetDockDatabase, f"{ns}/docking/get_dock_database")
         self._stop_client = self.create_client(Trigger, f"{ns}/autonomy/stop")
 

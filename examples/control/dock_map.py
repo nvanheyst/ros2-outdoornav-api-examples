@@ -54,7 +54,7 @@ def main(argv=None):
     client = ActionClient(node, MapDock, action_path)
     try:
         wait_for_service(node, maps_client, maps_srv)
-        wait_for_service(node, dock_db_client, dock_db_srv)
+        # dock_db is optional — select_dock probes it and falls back to a typed name.
         wait_for_action(node, client, action_path)
 
         map_uuid, map_name = select_map(node, maps_client, args.map_uuid or "")

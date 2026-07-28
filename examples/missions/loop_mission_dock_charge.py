@@ -55,7 +55,7 @@ class MissionWithCharging(Node):
         self.dock_action_path = f"{namespace}/autonomy/dock_local"
         self.undock_action_path = f"{namespace}/autonomy/undock"
         self.maps_srv = f"{namespace}/mission_manager/get_all_maps"
-        self.missions_srv = f"{namespace}/mission_manager/get_all_network_missions"
+        self.missions_srv = f"{namespace}/mission_manager/get_all_missions"
         self.dock_db_srv = f"{namespace}/docking/get_dock_database"
 
         self.create_subscription(BatteryState, f"{namespace}/platform/bms/state", self._bms_cb, 10)
@@ -75,7 +75,7 @@ class MissionWithCharging(Node):
         wait_for_action(self, self.undock_client, self.undock_action_path)
         wait_for_service(self, self.maps_client, self.maps_srv)
         wait_for_service(self, self.missions_client, self.missions_srv)
-        wait_for_service(self, self.dock_db_client, self.dock_db_srv)
+        # dock_db is optional — select_dock probes it and falls back to a typed name.
         self.get_logger().info("waiting for first BMS reading …")
         while self.latest_percent is None:
             rclpy.spin_once(self, timeout_sec=1.0)

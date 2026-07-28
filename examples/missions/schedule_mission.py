@@ -55,7 +55,7 @@ class ScheduledMission(Node):
         self.map_uuid = ""
         self.mission_action = f"{namespace}/autonomy/mission"
         self.maps_srv = f"{namespace}/mission_manager/get_all_maps"
-        self.missions_srv = f"{namespace}/mission_manager/get_all_network_missions"
+        self.missions_srv = f"{namespace}/mission_manager/get_all_missions"
         self.mission_client = ActionClient(self, ExecuteMission, self.mission_action)
         self.maps_client = self.create_client(GetAllMaps, self.maps_srv)
         self.missions_client = self.create_client(GetAllNetworkMissions, self.missions_srv)

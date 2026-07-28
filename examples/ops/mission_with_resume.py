@@ -73,7 +73,7 @@ class MissionWithResume(Node):
         self.mission_action = f"{namespace}/autonomy/mission"
         self.resume_action = f"{namespace}/autonomy/mission_from_goal"
         self.maps_srv = f"{namespace}/mission_manager/get_all_maps"
-        self.missions_srv = f"{namespace}/mission_manager/get_all_network_missions"
+        self.missions_srv = f"{namespace}/mission_manager/get_all_missions"
         self.mission_client = ActionClient(self, ExecuteMission, self.mission_action)
         self.resume_client = ActionClient(self, ExecuteMissionFromGoal, self.resume_action)
         self.maps_client = self.create_client(GetAllMaps, self.maps_srv)

@@ -10,7 +10,7 @@ and a manual spin loop so every feedback message arrives.
 
 Touches:
   service <namespace>/mission_manager/get_all_maps            (GetAllMaps)
-  service <namespace>/mission_manager/get_all_network_missions (GetAllNetworkMissions)
+  service <namespace>/mission_manager/get_all_missions (GetAllNetworkMissions)
   action  <namespace>/autonomy/mission                        (ExecuteMission)
 """
 
@@ -36,7 +36,7 @@ class MissionWithFeedback(Node):
     def __init__(self, namespace: str):
         super().__init__("mission_feedback")
         self.maps_srv = f"{namespace}/mission_manager/get_all_maps"
-        self.missions_srv = f"{namespace}/mission_manager/get_all_network_missions"
+        self.missions_srv = f"{namespace}/mission_manager/get_all_missions"
         self.mission_action = f"{namespace}/autonomy/mission"
         self.maps_client = self.create_client(GetAllMaps, self.maps_srv)
         self.missions_client = self.create_client(GetAllNetworkMissions, self.missions_srv)
@@ -100,7 +100,7 @@ def main(argv=None):
     if args.dry_run:
         ns = args.namespace
         print(f"[dry-run] {ns}/mission_manager/get_all_maps  (map selection)")
-        print(f"[dry-run] {ns}/mission_manager/get_all_network_missions  (mission selection)")
+        print(f"[dry-run] {ns}/mission_manager/get_all_missions  (mission selection)")
         print(f"[dry-run] {ns}/autonomy/mission  (ExecuteMission + feedback_callback)")
         return
 

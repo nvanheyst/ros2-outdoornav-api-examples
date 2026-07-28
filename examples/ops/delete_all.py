@@ -17,7 +17,7 @@ database - see `<ns>/docking/dock_manager/clear_data`).
 Touches:
   service <namespace>/mission_manager/delete_all                     (DeleteEverything)
   service <namespace>/mission_manager/get_all_maps                   (GetAllMaps, --dry-run only)
-  service <namespace>/mission_manager/get_all_network_missions       (GetAllNetworkMissions, --dry-run only)
+  service <namespace>/mission_manager/get_all_missions       (GetAllNetworkMissions, --dry-run only)
   service <namespace>/mission_manager/get_all_points_of_interest     (GetAllPointsOfInterest, --dry-run only)
 """
 
@@ -42,7 +42,7 @@ class DeleteAll(Node):
         super().__init__("delete_all")
         self.delete_srv = f"{namespace}/mission_manager/delete_all"
         self.get_maps_srv = f"{namespace}/mission_manager/get_all_maps"
-        self.get_missions_srv = f"{namespace}/mission_manager/get_all_network_missions"
+        self.get_missions_srv = f"{namespace}/mission_manager/get_all_missions"
         self.get_pois_srv = f"{namespace}/mission_manager/get_all_points_of_interest"
 
         self.delete_client = self.create_client(DeleteEverything, self.delete_srv)

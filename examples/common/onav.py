@@ -83,16 +83,33 @@ def select_mission(node, client, explicit_uuid: str = "") -> tuple[str, str]:
     return m.uuid, m.name
 
 
-def select_dock(node, client, explicit_name: str = "") -> str:
-    """Return dock name. Shows a menu unless explicit_name is given."""
+def select_dock(node, client, explicit_name: str = "", probe_timeout: float = 3.0) -> str:
+    """Return dock name.
+
+    Docks are addressed by name, so the database is a convenience, not a
+    requirement. Order: explicit --dock-name → menu (if the dock-database
+    service answers) → typed name. This owns the probe so callers must NOT
+    wait_for_service on the database first — it isn't present on every build.
+    """
     if explicit_name:
         return explicit_name
-    docks = fetch_docks(node, client)
-    if not docks:
-        raise RuntimeError("no docks found — pass --dock-name <name> to skip this menu")
-    print("\nDocks:")
-    d = pick_from_list(docks, lambda d: d.name, "dock")
-    return d.name
+    if client.wait_for_service(timeout_sec=probe_timeout):
+        try:
+            docks = fetch_docks(node, client)
+        except TimeoutError:
+            docks = []
+        if docks:
+            print("\nDocks:")
+            d = pick_from_list(docks, lambda d: d.name, "dock")
+            return d.name
+        node.get_logger().info("dock database empty — type the dock name")
+    else:
+        node.get_logger().info("dock database service unavailable — type the dock name")
+    while True:
+        raw = input("Dock name: ").strip()
+        if raw:
+            return raw
+        print("  dock name cannot be empty")
 
 
 def select_poi(node, client, explicit_uuid: str = "") -> tuple[str, str]:
