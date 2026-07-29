@@ -35,18 +35,11 @@ from clearpath_navigation_msgs.msg import MapPoint
 
 from examples.common.argparse_base import make_parser
 from examples.common.ros_helpers import wait_for_service
+from examples.common.geo import haversine_m
 
 
 EDGE_RADIUS_M = 1.5
 SPEED_LIMIT_M_S = 1.0
-
-
-def haversine_m(a, b):
-    lat1, lon1 = math.radians(a[0]), math.radians(a[1])
-    lat2, lon2 = math.radians(b[0]), math.radians(b[1])
-    dlat, dlon = lat2 - lat1, lon2 - lon1
-    h = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
-    return 2 * 6_371_000.0 * math.asin(math.sqrt(h))
 
 
 def rdp_simplify(points, max_dev_m):

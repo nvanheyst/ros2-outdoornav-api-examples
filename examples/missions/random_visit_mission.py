@@ -36,6 +36,7 @@ from examples.common.argparse_base import make_parser
 from examples.common.config import map_id as default_map_id
 from examples.common.ros_helpers import wait_for_service, wait_for_action, call_service
 from examples.common.onav import select_map
+from examples.common.geo import haversine_m
 
 
 POSITION_TOLERANCE_M = 1.0
@@ -46,14 +47,6 @@ def bbox(points):
     lats = [p.latitude for p in points]
     lons = [p.longitude for p in points]
     return min(lats), max(lats), min(lons), max(lons)
-
-
-def haversine_m(a, b):
-    lat1, lon1 = math.radians(a[0]), math.radians(a[1])
-    lat2, lon2 = math.radians(b[0]), math.radians(b[1])
-    dlat, dlon = lat2 - lat1, lon2 - lon1
-    h = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
-    return 2 * 6_371_000.0 * math.asin(math.sqrt(h))
 
 
 class RandomVisit(Node):

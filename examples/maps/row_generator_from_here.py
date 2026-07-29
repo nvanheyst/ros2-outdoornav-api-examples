@@ -40,16 +40,12 @@ from clearpath_navigation_msgs.msg import MapPoint
 
 from examples.common.argparse_base import make_parser
 from examples.common.ros_helpers import wait_for_service, call_service
+from examples.common.geo import yaw_from_quat
 # Reuse the geometry from the fixed-coordinate version - this script only swaps
 # where the centre + bearing come from.
 from row_generator_square import (
     boustrophedon, offset_ll, DEFAULT_EDGE_RADIUS_M, DEFAULT_SPEED_LIMIT_M_S,
 )
-
-
-def yaw_from_quat(x: float, y: float, z: float, w: float) -> float:
-    """Yaw (rotation about Z) in radians from a quaternion."""
-    return math.atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z))
 
 
 def anchor_center(lat, lon, w, h, bearing_deg, anchor):

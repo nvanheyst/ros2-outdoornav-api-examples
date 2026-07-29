@@ -49,6 +49,7 @@ from clearpath_navigation_msgs.msg import MapPoint
 
 from examples.common.argparse_base import make_parser
 from examples.common.ros_helpers import wait_for_service, call_service
+from examples.common.geo import haversine_m, yaw_from_quat
 
 
 DEFAULT_EDGE_RADIUS_M = 1.5
@@ -59,14 +60,6 @@ def offset_ll(lat: float, lon: float, east_m: float, north_m: float) -> tuple[fl
     dlat = north_m / 111_320.0
     dlon = east_m / (111_320.0 * math.cos(math.radians(lat)))
     return lat + dlat, lon + dlon
-
-
-def haversine_m(a: tuple, b: tuple) -> float:
-    lat1, lon1 = math.radians(a[0]), math.radians(a[1])
-    lat2, lon2 = math.radians(b[0]), math.radians(b[1])
-    dlat, dlon = lat2 - lat1, lon2 - lon1
-    h = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
-    return 2 * 6_371_000.0 * math.asin(math.sqrt(h))
 
 
 def boustrophedon(center_lat, center_lon, w, h, spacing, bearing_deg):
@@ -87,10 +80,6 @@ def boustrophedon(center_lat, center_lon, w, h, spacing, bearing_deg):
                         row_e + along[0] * half_w, row_n + along[1] * half_w)
         pts.extend([start, end] if i % 2 == 0 else [end, start])
     return pts
-
-
-def yaw_from_quat(x: float, y: float, z: float, w: float) -> float:
-    return math.atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z))
 
 
 class RowGenSquare(Node):

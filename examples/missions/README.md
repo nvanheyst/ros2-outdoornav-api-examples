@@ -9,7 +9,7 @@ container + connection setup are in the [top-level README](../../README.md).
 | `traverse_entire_map_gotos.py` | `mission_manager/get_map`, `autonomy/goto` | **Ephemeral**, free-GPS traversal. Fires one ExecuteGoTo per node in greedy nearest-neighbour order from the current fix. No mission stored. Ignores edges. |
 | `random_visit_mission.py` | `mission_manager/get_map`, `autonomy/goto` | Random GoTo goals inside the map bbox. Soak test. |
 | `go_to_poi.py` | `mission_manager/{get_all_maps, get_all_points_of_interest}`, `autonomy/goto_poi` | Drive to a single named POI (ExecuteGoToPOI). Interactive map + POI menu, or provide UUIDs directly. |
-| `mission_feedback.py` | `mission_manager/{get_all_maps, get_all_network_missions}`, `autonomy/mission` | Run ExecuteMission with a `feedback_callback` and a manual spin loop so per-waypoint progress arrives during execution. |
+| `mission_feedback.py` | `mission_manager/{get_all_maps, get_all_missions}`, `autonomy/mission` | Run ExecuteMission with a `feedback_callback` and a manual spin loop so per-waypoint progress arrives during execution. |
 | `loop_mission_battery_aware.py` | `autonomy/mission`, `platform/bms/state` | Loop a mission until battery drops below threshold. For robots without a dock. |
 | `loop_mission_dock_charge.py` | `autonomy/mission`, `autonomy/{dock_local, undock}`, `platform/bms/state` | Loop indefinitely, docking to charge when battery falls below `--dock-threshold` and resuming when it reaches `--resume-threshold`. For robots with a dock. |
 | `visit_pois_by_tag.py` | `mission_manager/{get_all_maps, get_all_points_of_interest}`, `autonomy/goto_poi` | Visit every POI matching a tag in order (ExecuteGoToPOI), for `--loops` iterations. Useful for inspection routes tagged in the UI. |
